@@ -51,7 +51,9 @@ frappe.ui.form.on("Production Plan", {
             frappe.msgprint(__("Please select items to reduce quantity."));
             return;
         }
-
+        if (frm.doc.__islocal){
+            frappe.throw("Please save the document.")
+        }
         frappe.confirm(
             __("This will reduce raw material quantities. Are you sure you want to continue ?"),
             () => {
