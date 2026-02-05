@@ -37,6 +37,7 @@ frappe.ui.form.on("Visa Request", {
                 },
                 callback:(r)=>{
                     if(r.message){
+                        frm.doc.check_list = []
                         r.message.checklist.forEach(e => {
                            let row = frm.add_child("check_list"); 
                            row.catogory = e.catogory
