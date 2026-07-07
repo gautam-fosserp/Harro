@@ -1,7 +1,7 @@
 // Copyright (c) 2026, Fosserp and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["MOOWR's Inward Items Report"] = {
+frappe.query_reports["MOOWR Inward Items Report"] = {
 	filters: [
 		{
 			fieldname: "company",
