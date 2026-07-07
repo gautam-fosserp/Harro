@@ -13,11 +13,11 @@
  "modified": "2026-07-07 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Harro",
- "name": "Import Data Report",
+ "name": "MOOWR's Inward Items Report",
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Purchase Receipt",
- "report_name": "Import Data Report",
+ "report_name": "MOOWR's Inward Items Report",
  "report_type": "Script Report",
  "roles": [
   {
