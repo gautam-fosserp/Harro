@@ -937,13 +937,21 @@ def get_data(filters):
                 if show_outward:
                     # For outward, handle Delivery Notes
                     if row.voucher_type == "Delivery Note":
-                        dn_data = get_delivery_note_outward_data(row.voucher_no, display_qty, row.get('item_code'))
+                        dn_data = get_delivery_note_outward_data(
+                            row.voucher_no, display_qty, row.get('item_code'), row.get('warehouse')
+                        )
                         if dn_data:
+                            for dn_row in dn_data:
+                                dn_row["outward_reference_doctype"] = row.voucher_type
+                                dn_row["outward_reference_no"] = row.voucher_no
                             final_data.extend(dn_data)
                             processed_vouchers.add(voucher_key)
                     elif row.voucher_type == "Stock Entry":
                         se_data = get_stock_entry_data(row, display_qty, show_outward)
                         if se_data:
+                            for se_row in se_data:
+                                se_row["outward_reference_doctype"] = row.voucher_type
+                                se_row["outward_reference_no"] = row.voucher_no
                             final_data.extend(se_data)
                             processed_vouchers.add(voucher_key)
                 else:
@@ -972,32 +980,34 @@ def get_data(filters):
         return []
 
 
-def get_delivery_note_outward_data(voucher_no, qty, item_code=None):
+def get_delivery_note_outward_data(voucher_no, qty, item_code=None, warehouse=None):
     """Get outward/removal data from Delivery Note"""
     try:
         dn = frappe.get_doc("Delivery Note", voucher_no)
         result = []
-        
+
         # Get shipping bill from Delivery Note
-        shipping_bill = getattr(dn, 'custom_shipping_bill_no', None) or ""
-        shipping_bill_date = getattr(dn, 'custom_shipping_bill_date', None)
+        shipping_bill = getattr(dn, 'shipping_bill_number', None) or ""
+        shipping_bill_date = getattr(dn, 'shipping_bill_date', None)
         if shipping_bill_date:
             shipping_bill_date = frappe.format(shipping_bill_date, {"fieldtype": "Date"})
         shipping_bill_display = f"{shipping_bill} / {shipping_bill_date}" if shipping_bill else ""
-        
+
         # GST Invoice from Delivery Note
         gst_invoice = voucher_no
         gst_invoice_date = frappe.format(dn.posting_date, {"fieldtype": "Date"})
         gst_invoice_display = f"{gst_invoice} / {gst_invoice_date}"
-        
+
         # Format removal date
         removal_date = format_receipt_datetime(dn.posting_date, dn.posting_time)
-        
+
         # Process each item in Delivery Note
         for item in dn.items:
             if item_code and item.item_code != item_code:
                 continue
-                
+            if warehouse and item.warehouse != warehouse:
+                continue
+
             # Get batches used for this item
             batches_data = get_batches_from_delivery_note_item(dn.name, item.name, item.item_code, item.qty)
             
