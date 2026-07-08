@@ -1143,16 +1143,29 @@ def get_stock_entry_data(stock_ledger_row, qty, is_outward=False):
     """Get Stock Entry data with item details"""
     voucher_no = stock_ledger_row.get('voucher_no')
     item_code = stock_ledger_row.get('item_code')
-    
+
     if is_outward:
+        # The actual outward/removal date must come from this Stock Entry
+        # (the voucher that performed the removal, matching the Stock
+        # Ledger row the date filter is applied against), not from
+        # whichever source document the batch traces back to.
+        outward_removal_date = format_receipt_datetime(
+            stock_ledger_row.get("posting_date"), stock_ledger_row.get("posting_time")
+        )
+
         # For outward entries, we need to find the source document that created the batch
         # Check if this stock entry has batch/serial references
         if stock_ledger_row.serial_and_batch_bundle:
             # Get the source document details from batch references
-            return get_batch_reference_data(stock_ledger_row.serial_and_batch_bundle, qty, is_outward)
+            return get_batch_reference_data(
+                stock_ledger_row.serial_and_batch_bundle, qty, is_outward, outward_removal_date
+            )
         else:
             # If no batch bundle, try to get from the stock entry details
-            return get_material_receipt_data(voucher_no, qty, item_code, is_outward)
+            se_data = get_material_receipt_data(voucher_no, qty, item_code, is_outward)
+            for se_row in se_data:
+                se_row["removal_date"] = outward_removal_date
+            return se_data
     
     # For inward entries, check if it's Material Receipt
     stock_entry_type = frappe.get_value("Stock Entry", voucher_no, "stock_entry_type")
@@ -1271,7 +1284,7 @@ def get_material_receipt_data(voucher_no, qty, item_code=None, is_outward=False)
     return result
 
 
-def get_batch_reference_data(serial_and_batch_bundle, qty, is_outward=False):
+def get_batch_reference_data(serial_and_batch_bundle, qty, is_outward=False, outward_removal_date=None):
     """Get data from batch references - trace back to source document, quantity from stock ledger"""
     serial_and_batch_details = frappe.db.sql("""
         SELECT
@@ -1287,7 +1300,7 @@ def get_batch_reference_data(serial_and_batch_bundle, qty, is_outward=False):
 
     source_doc_list = []
     seen_docs = set()
-    
+
     for row in serial_and_batch_details:
         if row.reference_name and row.reference_name not in seen_docs:
             seen_docs.add(row.reference_name)
@@ -1299,16 +1312,22 @@ def get_batch_reference_data(serial_and_batch_bundle, qty, is_outward=False):
         docname = row.reference_name
         # Use the passed qty from stock ledger, not the batch qty
         display_qty = qty
-        
+
         if doctype == "Purchase Receipt":
             # Get import receipt details from the source PR, but use stock ledger qty
             pr_data = get_purchase_receipt_data(docname, display_qty, None, is_outward)
             if pr_data:
+                if is_outward and outward_removal_date:
+                    for pr_row in pr_data:
+                        pr_row["removal_date"] = outward_removal_date
                 result.extend(pr_data)
         elif doctype == "Stock Entry":
             # Get import receipt details from the source Stock Entry, but use stock ledger qty
             se_data = get_material_receipt_data(docname, display_qty, None, is_outward)
             if se_data:
+                if is_outward and outward_removal_date:
+                    for se_row in se_data:
+                        se_row["removal_date"] = outward_removal_date
                 result.extend(se_data)
         else:
             # For other doctypes, try to get the source document details
@@ -1316,6 +1335,9 @@ def get_batch_reference_data(serial_and_batch_bundle, qty, is_outward=False):
                 # Try to get the original import document details
                 source_data = get_source_document_details(doctype, docname, display_qty, is_outward)
                 if source_data:
+                    if outward_removal_date:
+                        for src_row in source_data:
+                            src_row["removal_date"] = outward_removal_date
                     result.extend(source_data)
             else:
                 # For inward, continue with generic fetch (existing code)
