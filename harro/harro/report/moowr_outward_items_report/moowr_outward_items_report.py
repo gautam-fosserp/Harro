@@ -32,7 +32,6 @@ def get_outward_columns():
 		{"label": _("Rate in INR"), "fieldname": "rate_inr", "fieldtype": "Currency", "options": "inr_currency", "width": 130},
 		{"label": _("Rate in EUR"), "fieldname": "rate_eur", "fieldtype": "Currency", "options": "eur_currency", "width": 130},
 		{"label": _("Exchange Rate"), "fieldname": "conversion_rate", "fieldtype": "Float", "width": 120},
-		{"label": _("Value"), "fieldname": "assessable_value", "fieldtype": "Data", "width": 130},
 		{"label": _("Date of Removal"), "fieldname": "removal_date", "fieldtype": "Data", "width": 160},
 		{"label": _("From Warehouse"), "fieldname": "from_warehouse", "fieldtype": "Link", "options": "Warehouse", "width": 180},
 		{"label": _("To Warehouse"), "fieldname": "to_warehouse", "fieldtype": "Link", "options": "Warehouse", "width": 180},
@@ -350,8 +349,6 @@ def get_outward_data(filters):
 		rate_inr, rate_eur, conversion_rate = _resolve_rates(inward_reference_doctype, inward_reference_no, item_code)
 		supplier = _resolve_supplier(inward_reference_doctype, inward_reference_no)
 
-		assessable_value = row.get("assessable_value", "")
-
 		removal_date_raw = str(row.get("removal_date", row.get("receipt_date_time", "")) or "")
 		# Show date only, no time (e.g. "31-03-2026 12:01" -> "31-03-2026").
 		removal_date = removal_date_raw.split(" ")[0] if removal_date_raw else ""
@@ -365,7 +362,6 @@ def get_outward_data(filters):
 			"conversion_rate": conversion_rate,
 			"inr_currency": "INR",
 			"eur_currency": "EUR",
-			"assessable_value": assessable_value,
 			"removal_date": removal_date,
 			"supplier": supplier,
 			"from_warehouse": from_warehouse,
