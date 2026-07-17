@@ -225,6 +225,41 @@ def _resolve_supplier(inward_reference_doctype, inward_reference_no):
 	return ""
 
 
+def _resolve_stock_entry_detail_fields(inward_reference_doctype, inward_reference_no, item_code):
+	"""Return (supplier_invoice_no, supplier_invoice_date, vender_name,
+	bill_of_entry_no, bill_of_entry_date) from Stock Entry Detail custom
+	fields, for rows where the inward reference is a Stock Entry."""
+	if inward_reference_doctype != "Stock Entry" or not inward_reference_no:
+		return "", None, "", "", None
+
+	row = None
+	if item_code:
+		row = frappe.db.get_value(
+			"Stock Entry Detail",
+			{"parent": inward_reference_no, "item_code": item_code},
+			["supplier_invoice_no", "supplier_invoice_date", "vender_name", "bill_of_entry", "bill_of_entry_date"],
+			as_dict=True,
+		)
+	if not row:
+		row = frappe.db.get_value(
+			"Stock Entry Detail",
+			{"parent": inward_reference_no},
+			["supplier_invoice_no", "supplier_invoice_date", "vender_name", "bill_of_entry", "bill_of_entry_date"],
+			as_dict=True,
+			order_by="idx asc",
+		)
+	if not row:
+		return "", None, "", "", None
+
+	return (
+		row.supplier_invoice_no or "",
+		row.supplier_invoice_date,
+		row.vender_name or "",
+		row.bill_of_entry or "",
+		row.bill_of_entry_date,
+	)
+
+
 def _resolve_po_and_material_request(inward_reference_doctype, inward_reference_no, item_code):
 	"""Return (purchase_order, material_request) traced from the inward
 	Purchase Receipt's item row (matching item_code where possible, else
@@ -348,6 +383,17 @@ def get_outward_data(filters):
 
 		rate_inr, rate_eur, conversion_rate = _resolve_rates(inward_reference_doctype, inward_reference_no, item_code)
 		supplier = _resolve_supplier(inward_reference_doctype, inward_reference_no)
+
+		if inward_reference_doctype == "Stock Entry" and inward_reference_no:
+			se_supplier_invoice_no, se_supplier_invoice_date, se_vender_name, se_bill_of_entry_no, se_bill_of_entry_date = (
+				_resolve_stock_entry_detail_fields(inward_reference_doctype, inward_reference_no, item_code)
+			)
+			supplier_invoice_no = se_supplier_invoice_no
+			supplier_invoice_date = se_supplier_invoice_date
+			bill_of_entry_no = se_bill_of_entry_no
+			bill_of_entry_date = se_bill_of_entry_date
+			if not supplier:
+				supplier = se_vender_name
 
 		removal_date_raw = str(row.get("removal_date", row.get("receipt_date_time", "")) or "")
 		# Show date only, no time (e.g. "31-03-2026 12:01" -> "31-03-2026").
