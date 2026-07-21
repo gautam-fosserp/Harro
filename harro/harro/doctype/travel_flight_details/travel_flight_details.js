@@ -3,6 +3,8 @@
 
 frappe.ui.form.on("Travel Flight Details", {
     refresh(frm) {
+        frm.__old_onward = frm.doc.custom_onward_travel_date;
+        frm.__old_return = frm.doc.custom_return_travel_date;
         travel_segment_hide_sidebar(frm);
         travel_segment_add_back_button(frm);
     },
@@ -40,7 +42,67 @@ frappe.ui.form.on("Travel Flight Details", {
             },
         });
     },
+    custom_onward_travel_date(frm) {
+        if (frm.is_new()) return;
+
+        prompt_for_comment(
+            frm,
+            "Onward Travel Date",
+            frm.__old_onward,
+            frm.doc.custom_onward_travel_date
+        );
+        
+        frm.__old_onward = frm.doc.custom_onward_travel_date;
+    },
+
+    custom_return_travel_date(frm) {
+        if (frm.is_new()) return;
+
+        prompt_for_comment(
+            frm,
+            "Return Travel Date",
+            frm.__old_return,
+            frm.doc.custom_return_travel_date
+        );
+
+        frm.__old_return = frm.doc.custom_return_travel_date;
+    }
 });
+
+function prompt_for_comment(frm, field_name, old_value, new_value) {
+
+    let d = new frappe.ui.Dialog({
+        title: __("Reason for Travel Date Change"),
+        fields: [
+            {
+                fieldname: "comment",
+                fieldtype: "Small Text",
+                label: __("Reason"),
+                reqd: 1
+            }
+        ],
+        primary_action_label: __("Submit"),
+        primary_action(values) {
+
+            frappe.call({
+                method: "harro.harro.doctype.travel_flight_details.travel_flight_details.add_travel_date_comment",
+                args: {
+                    docname: frm.doc.name,
+                    field_name: field_name,
+                    old_value: old_value,
+                    new_value: new_value,
+                    comment: values.comment
+                },
+                callback() {
+                    d.hide();
+                }
+            });
+
+        }
+    });
+
+    d.show();
+}
 
 function travel_segment_hide_sidebar(frm) {
     if (frm.sidebar) {
