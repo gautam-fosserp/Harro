@@ -14,6 +14,7 @@
   "contact_email",
   "section_break_ftlx",
   "column_break_link",
+  "custom_flight_booking_details",
   "custom_onward_travel_date",
   "custom_return_travel_date",
   "custom_return_travel_from",
@@ -105,6 +106,11 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "custom_flight_booking_details",
+   "fieldtype": "Heading",
+   "label": "Flight Booking Details"
+  },
+  {
    "fieldname": "custom_onward_travel_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -113,7 +119,7 @@
   {
    "fieldname": "custom_return_travel_date",
    "fieldtype": "Date",
-   "label": "Onward Travel Date"
+   "label": "Return Travel Date"
   },
   {
    "fieldname": "custom_return_travel_from",
