@@ -66,8 +66,87 @@ frappe.ui.form.on("Travel Flight Details", {
         );
 
         frm.__old_return = frm.doc.custom_return_travel_date;
+    },
+    custom_send_first_rescheduling_invoice: function(frm) {
+        send_invoice_email(frm, 'first');
+    },
+
+    custom_send_second_rescheduling_invoice: function(frm) {
+        send_invoice_email(frm, 'second');
+    },
+    custom_send_first_reschedule_request: function(frm) {
+        send_reschedule_request(frm, 'first');
+    },
+    custom_send_second_reschedule_request: function(frm) {
+        send_reschedule_request(frm, 'second');
     }
 });
+
+function send_reschedule_request(frm, request_type) {
+    if (frm.is_new() || frm.is_dirty()) {
+        frappe.msgprint('Please save the document before sending then email');
+        return;
+    }
+
+    const label = request_type === 'first' ? 'First' : 'second';
+    
+    frappe.confirm(
+        `Send ${label} Rescheduling Request email to the Travel Desk?`,
+        function() {
+            frappe.call({
+                method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_reschedule_request',
+                args: {
+                    docname: frm.doc.name,
+                    request_type: request_type
+                },
+                freeze: true,
+                freeze_message: 'Sending email...',
+                callback: function(r) {
+                    if (!r.exc) {
+                        frappe.show_alert({message: `${label} Rescheduling Request sent`, indicator: 'green'});
+                    }
+                }
+            })
+        }
+    )
+}
+
+function send_invoice_email(frm, invoice_type) {
+    if (frm.is_new() || frm.is_dirty()) {
+        frappe.msgprint('Please save the document before sending the email.');
+        return;
+    }
+
+    const label = invoice_type === 'first' ? 'First' : 'Second';
+    const attach_field = invoice_type === 'first'
+        ? 'custom_rescheduling_invoice'
+        : 'custom_second_rescheduling_invoice';
+
+    if (!frm.doc[attach_field]) {
+        frappe.msgprint(`Please attach the ${label} Rescheduling Invoice first.`);
+        return;
+    }
+
+    frappe.confirm(
+        `Send ${label} Rescheduling Invoice email to the Accounts team?`,
+        function() {
+            frappe.call({
+                method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_rescheduling_invoice_email',
+                args: {
+                    docname: frm.doc.name,
+                    invoice_type: invoice_type
+                },
+                freeze: true,
+                freeze_message: 'Sending email...',
+                callback: function(r) {
+                    if (!r.exc) {
+                        frappe.show_alert({message: `${label} Rescheduling Invoice sent`, indicator: 'green'});
+                    }
+                }
+            });
+        }
+    );
+}
 
 function prompt_for_comment(frm, field_name, old_value, new_value) {
 
