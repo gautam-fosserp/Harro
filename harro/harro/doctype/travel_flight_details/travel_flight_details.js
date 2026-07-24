@@ -73,8 +73,43 @@ frappe.ui.form.on("Travel Flight Details", {
 
     custom_send_second_rescheduling_invoice: function(frm) {
         send_invoice_email(frm, 'second');
+    },
+    custom_send_first_reschedule_request: function(frm) {
+        send_reschedule_request(frm, 'first');
+    },
+    custom_send_second_reschedule_request: function(frm) {
+        send_reschedule_request(frm, 'second');
     }
 });
+
+function send_reschedule_request(frm, request_type) {
+    if (frm.is_new() || frm.is_dirty()) {
+        frappe.msgprint('Please save the document before sending then email');
+        return;
+    }
+
+    const label = request_type === 'first' ? 'First' : 'second';
+    
+    frappe.confirm(
+        `Send ${label} Rescheduling Request email to the Travel Desk?`,
+        function() {
+            frappe.call({
+                method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_reschedule_request',
+                args: {
+                    docname: frm.doc.name,
+                    request_type: request_type
+                },
+                freeze: true,
+                freeze_message: 'Sending email...',
+                callback: function(r) {
+                    if (!r.exc) {
+                        frappe.show_alert({message: `${label} Rescheduling Request sent`, indicator: 'green'});
+                    }
+                }
+            })
+        }
+    )
+}
 
 function send_invoice_email(frm, invoice_type) {
     if (frm.is_new() || frm.is_dirty()) {
