@@ -102,18 +102,27 @@ def send_reschedule_request(docname, request_type):
     doc = frappe.get_doc("Travel Flight Details", docname)
     travel_planning_url = get_url_to_form("Travel Planning", doc.travel_planning)
 
-    # Get all enabled users with role "Accounts User" or "Accounts Manager"
-    accounts_users = frappe.get_all(
+    if request_type == "first":
+        roles = ["Travel Manager", "Travel Desk Manager"]
+        label = "First Reschedule Request"
+    elif request_type == "second":
+        roles = ["Traveller"]
+        label = "Second Reschedule Request"
+    else:
+        frappe.throw("Invalid request type")
+
+    # Get all enabled users with the relevant role(s)
+    role_users = frappe.get_all(
         "Has Role",
         filters={
-            "role": ["in", ["Travel Manager", "Travel Desk Manager"]],
+            "role": ["in", roles],
             "parenttype": "User",
         },
         fields=["parent"],
     )
 
     recipients = list(set(
-        u.parent for u in accounts_users
+        u.parent for u in role_users
         if u.parent not in ("Administrator", "Guest")
     ))
 
@@ -127,19 +136,12 @@ def send_reschedule_request(docname, request_type):
         recipients = enabled_users
 
     if not recipients:
-            frappe.throw("No users found with role Travel Desk or Travel Desk Manager.")
-    
-    if request_type == "first":
-        label = "First Reschedule Request"
-    elif request_type == "second":
-        label = "Second Reschedule Request"
-    else:
-        frappe.throw("Invalid request type")
-
+        role_label = " or ".join(roles)
+        frappe.throw(f"No users found with role {role_label}.")
 
     subject = f"{label} - {doc.employee} ({doc.travel_planning})"
     message = f"""
-        Dear Travel Desk Team,<br><br>
+        Dear {"Traveller" if request_type == "second" else "Travel Desk Team"},<br><br>
 
         This is to inform you that the {label.lower()} has been created by
         <b>{frappe.session.user}</b>. Kindly review the rescheduled travel details and proceed with the necessary actions.<br><br>
