@@ -570,9 +570,50 @@ function show_review_confirmation_dialog(frm, action) {
         },
     });
 
-	d.fields_dict.travel_summary.$wrapper.html(build_review_html(frm));
-	d.show();
-	d.$wrapper.find(".modal-dialog").css({ width: "70%", maxWidth: "70%" });
+	d.fields_dict.travel_summary.$wrapper.html(
+        `<div class="text-muted text-center" style="padding:30px;">${__("Loading traveller details...")}</div>`
+    );
+    d.show();
+
+    d.$wrapper.find(".modal-dialog").css({ width: "70%", maxWidth: "70%" });
+
+    fetch_all_segments_by_row(frm).then((segments_by_row) => {
+        d.fields_dict.travel_summary.$wrapper.html(build_review_html(frm, segments_by_row));
+    });
+}
+
+function fetch_all_segments_by_row(frm) {
+    const key_for = (doctype) => {
+        if (doctype === "Travel Flight Details") return "flight";
+        if (doctype === "Travel Hotel Booking") return "hotel";
+        if (doctype === "Travel Taxi Details") return "taxi";
+    };
+
+    const calls = TRAVEL_SEGMENT_TYPES.map((segment_type) =>
+        frappe.call({
+            method: segment_type.get_method,
+            args: { travel_planning: frm.doc.name },
+        }).then((r) => ({ doctype: segment_type.doctype, rows: r.message || [] }))
+    );
+
+    return Promise.all(calls).then((results) => {
+        const by_row = {}; // cdn -> { flight, hotel, taxi }
+
+        results.forEach(({ doctype, rows }) => {
+            const key = key_for(doctype);
+            rows.forEach((seg_row) => {
+                const cdn = seg_row.travel_itinerary_row;
+                if (!cdn) return;
+                by_row[cdn] = by_row[cdn] || {};
+                const existing = by_row[cdn][key];
+                if (!existing || (seg_row.segment_no || 0) < (existing.segment_no || 0)) {
+                    by_row[cdn][key] = seg_row;
+                }
+            });
+        });
+
+        return by_row;
+    });
 }
 
 function apply_workflow_action(frm, action) {
@@ -598,7 +639,7 @@ function apply_workflow_action(frm, action) {
  * Builds the HTML for the Review Confirmation dialog. All dynamic values
  * are HTML-escaped to avoid injecting markup via doc/child-table data.
  */
-function build_review_html(frm) {
+function build_review_html(frm, segments_by_row) {
     const header_rows = [
         ["Travel Type", frm.doc.travel_type, "Purpose of Travel", frm.doc.purpose_of_travel],
         ["Customer", frm.doc.custom_customer, "Country", frm.doc.custom_country],
@@ -624,7 +665,7 @@ function build_review_html(frm) {
     ];
 
     const traveller_rows = (frm.doc[TRAVEL_PLANNING.GRID_FIELDNAME] || [])
-        .map((row, idx) => build_traveller_row_html(row, idx))
+        .map((row, idx) => build_traveller_row_html(row, idx, segments_by_row[row.name] || {}))
         .join("");
 
     return `
@@ -664,8 +705,11 @@ function build_review_html(frm) {
 }
 
 
-function build_traveller_row_html(row, idx) {
+function build_traveller_row_html(row, idx, row_segments) {
     const check = (val) => (val ? "✓" : "");
+    const flight = row_segments.flight || {};
+    const hotel = row_segments.hotel || {};
+    const taxi = row_segments.taxi || {};
 
     const cells = [
         idx + 1,
@@ -674,31 +718,31 @@ function build_traveller_row_html(row, idx) {
         row.employee_name || "-",
         row.custom_status || "-",
         row.custom_contact_email || "-",
-        row.custom_onward_travel_date || "-",
+        flight.custom_onward_travel_date || "-",
         row.travel_from || "-",
         row.travel_to || "-",
-        row.custom_return_travel_date || "-",
-        row.custom_return_travel_from || "-",
-        row.custom_return_travel_to || "-",
-        row.custom_flight_booking_status || "-",
+        flight.custom_return_travel_date || "-",
+        flight.custom_return_travel_from || "-",
+        flight.custom_return_travel_to || "-",
+        flight.custom_flight_booking_status || "-",
     ].map((v) => `<td>${esc(v)}</td>`);
 
     const checkbox_cells = [
-        row.lodging_required,
+        hotel.custom_stay_required,
     ].map((v) => `<td style="text-align:center">${check(v)}</td>`);
 
     const dates_and_room = [
-        row.check_in_date || "-",
-        row.check_out_date || "-",
-        row.room_night || 0,
-        row.custom_hotel_booking_status || "-",
+        hotel.check_in_date || "-",
+        hotel.check_out_date || "-",
+        hotel.room_night || 0,
+        hotel.custom_hotel_booking_status || "-",
     ].map((v) => `<td>${esc(v)}</td>`);
 
     const taxi_checkbox_cells = [
-        row.custom_taxi_required,
-        row.custom_airport_transfer,
-        row.custom_daily_transfer,
-        row.custom_out_of_india,
+        taxi.custom_taxi_required,
+        taxi.custom_airport_transfer,
+        taxi.custom_daily_transfer,
+        taxi.custom_out_of_india,
     ].map((v) => `<td style="text-align:center">${check(v)}</td>`);
 
     return `<tr>${cells.join("")}${checkbox_cells.join("")}${dates_and_room.join("")}${taxi_checkbox_cells.join("")}</tr>`;
