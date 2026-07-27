@@ -160,4 +160,33 @@ def send_reschedule_request(docname, request_type):
     )
 
     return True
-    
+
+
+@frappe.whitelist()
+def send_credit_note_email(docname):
+    doc = frappe.get_doc("Travel Flight Details", docname)
+
+    if not doc.custom_credit_note:
+        frappe.throw("Please attach the Credit Note before sending the email.")
+    if not doc.contact_email:
+        frappe.throw("Employee Contact Email is missing on this record.")
+
+    file_doc = frappe.get_doc("File", {"file_url": doc.custom_credit_note})
+
+    subject = f"Flight Cancellation Credit Note - {doc.employee} ({doc.travel_planning})"
+    message = f"""
+        Hello,<br><br>
+        This is to inform you that a credit note has been issued for the cancelled flight
+        against <b>Travel Planning {doc.travel_planning}</b>.<br><br>
+        Please find the credit note attached for your reference.<br><br>
+        Regards,<br>{frappe.session.user}
+    """
+
+    frappe.sendmail(
+        recipients=[doc.contact_email],
+        subject=subject,
+        message=message,
+        attachments=[{"fid": file_doc.name}],
+    )
+
+    return True

@@ -97,8 +97,7 @@
    "fieldname": "custom_driver_contact_number",
    "label": "Driver Contact Number",
    "fieldtype": "Phone",
-   "depends_on": "eval: doc.custom_taxi_required",
-   "hidden": 1
+   "depends_on": "eval: doc.custom_taxi_required"
   },
   {
    "fieldname": "custom_taxi_type",
@@ -128,15 +127,13 @@
    "fieldname": "custom_taxi_number",
    "label": "Taxi Number",
    "fieldtype": "Data",
-   "depends_on": "eval: doc.custom_taxi_required",
-   "hidden": 1
+   "depends_on": "eval: doc.custom_taxi_required"
   },
   {
    "fieldname": "custom_driver_name",
    "label": "Driver Name",
    "fieldtype": "Data",
-   "depends_on": "custom_taxi_required",
-   "hidden": 1
+   "depends_on": "custom_taxi_required"
   },
   {
    "fieldname": "custom_taxi_invoice_attachment",
@@ -148,8 +145,7 @@
    "fieldname": "custom_daily_transfer_taxi_cost",
    "label": "Daily Transfer Taxi Cost",
    "fieldtype": "Currency",
-   "depends_on": "custom_taxi_required",
-   "hidden": 1
+   "depends_on": "custom_taxi_required"
   },
   {
    "fieldname": "custom_column_break_d9krg",

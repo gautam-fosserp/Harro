@@ -42,6 +42,32 @@ frappe.ui.form.on("Travel Flight Details", {
             },
         });
     },
+    custom_send_revised_ticket(frm) {
+        send_reschedule_request(frm, "first");
+    },
+    custom_send_second_reschedule_ticket(frm) {
+        send_reschedule_request(frm, "second");
+    },
+    custom_send_credit_note(frm) {
+        const send = () => {
+            frappe.call({
+                method: "harro.harro.doctype.travel_flight_details.travel_flight_details.send_credit_note_email",
+                args: { docname: frm.doc.name },
+                freeze: true,
+                freeze_message: "Sending email...",
+                callback(r) {
+                    if (!r.exc) {
+                        frappe.show_alert({ message: "Credit Note email sent", indicator: "green" });
+                    }
+                },
+            });
+        };
+        if (frm.is_dirty()) {
+            frm.save().then(send);
+        } else {
+            send();
+        }
+    },
     custom_onward_travel_date(frm) {
         if (frm.is_new()) return;
 

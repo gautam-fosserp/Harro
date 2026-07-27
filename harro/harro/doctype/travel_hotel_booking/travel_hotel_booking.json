@@ -41,7 +41,9 @@
   "custom_airport_transport",
   "custom_airport_transport_remarks",
   "custom_break_fast",
+  "custom_break_fast_remarks",
   "custom_wifi",
+  "custom_wifi_remarks",
   "custom_column_break_9gose",
   "custom_hotel_invoice_details",
   "custom_hotel_invoice_id",
@@ -275,10 +277,22 @@
    "depends_on": "lodging_required"
   },
   {
+   "fieldname": "custom_break_fast_remarks",
+   "label": "Break Fast Remarks",
+   "fieldtype": "Small Text",
+   "depends_on": "custom_break_fast"
+  },
+  {
    "fieldname": "custom_wifi",
    "label": "Wifi",
    "fieldtype": "Check",
    "depends_on": "lodging_required"
+  },
+  {
+   "fieldname": "custom_wifi_remarks",
+   "label": "Wifi Remarks",
+   "fieldtype": "Small Text",
+   "depends_on": "custom_wifi"
   },
   {
    "fieldname": "custom_column_break_9gose",
