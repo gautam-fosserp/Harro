@@ -149,6 +149,11 @@ jinja = {
 # permission_query_conditions = {
 # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
 # }
+
+permission_query_conditions = {
+    "Travel Planning Employee Details": "harro.harro.docevents.travel_planning.employee_row_permission_query"
+}
+
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
@@ -241,7 +246,12 @@ doc_events = {
     },
     "Travel Planning": {
         "on_update": "harro.harro.api.sync_booking_status_to_travel_request",
-        "before_save": "harro.harro.docevents.travel_planning.calculate_totals"
+        "onload": "harro.harro.docevents.travel_planning.filter_itinerary_rows_by_employee",
+        "before_save": [
+            "harro.harro.docevents.travel_planning.restore_hidden_rows_before_save",
+            "harro.harro.docevents.travel_planning.calculate_totals"
+        ]
+        # "before_save": "harro.harro.docevents.travel_planning.calculate_totals"
     },
     "Purchase Invoice": {
         "before_validate": "harro.harro.docevents.purchase_invoice.fix_due_date_based_on_posting_date"

@@ -2,6 +2,11 @@ import frappe
 from frappe.utils.background_jobs import enqueue
 
 
+def execute():
+    """Entry point when run as a patch via `bench migrate`."""
+    start_stock_entry_cancellation()
+
+
 def start_stock_entry_cancellation():
     """Start the cancellation process."""
 
@@ -57,7 +62,3 @@ def cancel_stock_entry(stock_entries, index):
         stock_entries=stock_entries,
         index=index + 1,
     )
-
-
-# Start the process
-start_stock_entry_cancellation()

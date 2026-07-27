@@ -165,3 +165,72 @@ def calculate_totals(doc, method=None):
 	doc.custom_total_claimable_expense = total_claimable
 	doc.custom_total_unclaimable_expense = total_unclaimable
 
+
+# View only logged in user linked employee rows in travelling planning child table(travel iternary)
+VIEW_ALL_ROLES = {
+    "Travel Manager",
+    "Travel User",
+    "Travel Desk Manager",
+    "Accounts Manager",
+    "Accounts User",
+    "System Manager",
+}
+
+def _can_view_all(user=None):
+    user = user or frappe.session.user
+    if user == "Administrator":
+        return True
+    return bool(set(frappe.get_roles(user)) & VIEW_ALL_ROLES)
+
+def _get_linked_employee(user=None):
+    user = user or frappe.session.user
+    return frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+def filter_itinerary_rows_by_employee(doc, method=None):
+    """Show only the logged-in user's own row unless they hold a
+    view-all role."""
+    if _can_view_all():
+        return
+
+    employee = _get_linked_employee()
+    if not employee:
+        doc.travel_itinerary = []
+        return
+
+    doc.travel_itinerary = [
+        row for row in doc.travel_itinerary
+        if row.custom_employee == employee
+    ]
+
+
+def restore_hidden_rows_before_save(doc, method=None):
+	"""Safety net: if this user only ever saw their own row (others were
+    stripped in onload), re-merge the untouched rows from the DB version
+    before save so we don't wipe out other employees' data."""
+
+	if _can_view_all():
+		return
+	if doc.is_new():
+		return
+	db_doc = frappe.get_doc(doc.doctype, doc.name)
+	visible_ids = {row.custom_employee for row in doc.travel_itinerary}
+
+	for row in db_doc.travel_itinerary:
+		if row.custom_employee not in visible_ids:
+			doc.append("travel_itinerary", row.as_dict())
+
+	
+def employee_row_permission_query(user):
+    """Row-level filter for direct queries against the child doctype
+    (Report Builder, frappe.client.get_list, etc.)."""
+    if not user:
+        user = frappe.session.user
+    if _can_view_all(user):
+        return ""
+
+    employee = _get_linked_employee(user)
+    if not employee:
+        return "1=0"
+
+    return f"`tabTravel Planning Employee Details`.custom_employee = {frappe.db.escape(employee)}"
+

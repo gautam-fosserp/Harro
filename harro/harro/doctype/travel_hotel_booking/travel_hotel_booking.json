@@ -11,6 +11,7 @@
   "employee",
   "column_break_vibp",
   "travel_itinerary_row",
+  "contact_email",
   "section_break_gpok",
   "column_break_link",
   "preferred_area_for_lodging",
@@ -18,13 +19,17 @@
   "check_out_date",
   "room_night",
   "hotel_coast",
+  "custom_hotel_booking_details",
   "custom_hotel_name",
   "custom_taxi_bill",
   "custom_hotel_booking_status",
   "custom_hotel_booked_by",
+  "custom_hotel_remarks",
   "custom_hotel_cancellation_details",
   "custom_hotel_cancellation_charges",
   "custom_hotel_refund_amount",
+  "custom_section_break_arkdd",
+  "custom_column_break_m8ta2",
   "custom_hotel_reschedule_details",
   "custom_hotel_reschedule_charges",
   "custom_rescheduled_hotel_ticket_",
@@ -36,13 +41,16 @@
   "custom_airport_transport",
   "custom_airport_transport_remarks",
   "custom_break_fast",
+  "custom_break_fast_remarks",
   "custom_wifi",
+  "custom_wifi_remarks",
   "custom_column_break_9gose",
   "custom_hotel_invoice_details",
   "custom_hotel_invoice_id",
   "custom_hotel_booking_vendor_name",
   "custom_service_category",
   "custom_payment_terms_for_hotel_booking",
+  "custom_hotel_invoice",
   "custom_hotel_cost_per_day",
   "custom_total_hotel_charge",
   "custom_total_hotel_charge_as_per_invoice",
@@ -63,6 +71,17 @@
    "reqd": 1
   },
   {
+   "default": "1",
+   "fieldname": "segment_no",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sector No"
+  },
+  {
+   "fieldname": "column_break_qnko",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "employee",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -70,6 +89,10 @@
    "label": "Employee",
    "options": "Employee",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_vibp",
+   "fieldtype": "Column Break"
   },
   {
    "description": "The specific Travel Itinerary row (Travel Planning Employee Details) this record belongs to. Employee alone is not enough when the same employee has more than one itinerary row.",
@@ -81,11 +104,15 @@
    "reqd": 1
   },
   {
-   "default": "1",
-   "fieldname": "segment_no",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Segment No"
+   "description": "Contact email of the employee for this segment, carried over from the originating Travel Itinerary row. Used to notify the employee when this segment's booking status changes.",
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Contact Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "section_break_gpok",
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "column_break_link",
@@ -118,117 +145,154 @@
    "label": "Hotel Coast"
   },
   {
+   "fieldname": "custom_hotel_booking_details",
+   "label": "Hotel Booking Details",
+   "fieldtype": "Heading",
+   "depends_on": "lodging_required"
+  },
+  {
    "fieldname": "custom_hotel_name",
-   "fieldtype": "Link",
    "label": "Hotel Name",
-   "options": "Supplier"
+   "fieldtype": "Link",
+   "options": "Supplier",
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_taxi_bill",
+   "label": "Hotel Voucher",
    "fieldtype": "Attach",
-   "label": "Hotel Voucher"
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_hotel_booking_status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
    "label": "Hotel Booking Status",
-   "options": "\nIn progress\nBooked\nCancelled\nRescheduled"
+   "fieldtype": "Select",
+   "options": "\nIn progress\nBooked\nCancelled\nRescheduled\nCancelled and Booking\n",
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_hotel_booked_by",
-   "fieldtype": "Link",
    "label": "Hotel Booked By",
-   "options": "Employee"
+   "fieldtype": "Link",
+   "options": "Employee",
+   "depends_on": "lodging_required"
   },
   {
-   "depends_on": "eval:doc.custom_hotel_booking_status == \"Cancelled\"",
+   "fieldname": "custom_hotel_remarks",
+   "label": "Hotel Remarks",
+   "fieldtype": "Small Text"
+  },
+  {
    "fieldname": "custom_hotel_cancellation_details",
+   "label": "Hotel Cancellation Details",
    "fieldtype": "Heading",
-   "label": "Hotel Cancellation Details"
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Cancelled\""
   },
   {
-   "depends_on": "eval:doc.custom_hotel_booking_status == \"Cancelled\"",
    "fieldname": "custom_hotel_cancellation_charges",
+   "label": "Hotel Cancellation Charges",
    "fieldtype": "Currency",
-   "label": "Hotel Cancellation Charges"
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Cancelled\""
   },
   {
-   "depends_on": "eval:doc.custom_hotel_booking_status == \"Cancelled\"",
    "fieldname": "custom_hotel_refund_amount",
+   "label": "Hotel Refund Amount",
    "fieldtype": "Currency",
-   "label": "Hotel Refund Amount"
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Cancelled\""
   },
   {
-   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\"",
+   "fieldname": "custom_section_break_arkdd",
+   "fieldtype": "Section Break",
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\""
+  },
+  {
+   "fieldname": "custom_column_break_m8ta2",
+   "fieldtype": "Column Break",
+   "depends_on": "Hotel Reschedule Charges"
+  },
+  {
    "fieldname": "custom_hotel_reschedule_details",
+   "label": "Hotel Reschedule Details",
    "fieldtype": "Heading",
-   "label": "Hotel Reschedule Details"
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\""
   },
   {
-   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\"",
    "fieldname": "custom_hotel_reschedule_charges",
+   "label": "Hotel Reschedule Charges",
    "fieldtype": "Currency",
-   "label": "Hotel Reschedule Charges"
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\""
   },
   {
-   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\"",
    "fieldname": "custom_rescheduled_hotel_ticket_",
+   "label": "Rescheduled Hotel Ticket ",
    "fieldtype": "Attach",
-   "label": "Rescheduled Hotel Ticket "
+   "depends_on": "eval:doc.custom_hotel_booking_status == \"Rescheduled\""
   },
   {
    "fieldname": "custom_hotel_preferences",
+   "label": "Hotel Preferences",
    "fieldtype": "Heading",
-   "label": "Hotel Preferences"
+   "depends_on": "lodging_required"
   },
   {
-   "default": "0",
    "fieldname": "custom_laundry_facility",
+   "label": "Laundry Facility",
    "fieldtype": "Check",
-   "label": "Laundry Facility"
+   "depends_on": "lodging_required"
   },
   {
-   "depends_on": "custom_laundry_facility",
    "fieldname": "custom_laundry_facility_remarks",
+   "label": "Laundry Facility Remarks",
    "fieldtype": "Small Text",
-   "label": "Laundry Facility Remarks"
+   "depends_on": "custom_laundry_facility"
   },
   {
-   "default": "0",
    "fieldname": "custom_discount_on_meal",
+   "label": "Discount On Meal",
    "fieldtype": "Check",
-   "label": "Discount On Meal"
+   "depends_on": "lodging_required"
   },
   {
-   "depends_on": "custom_discount_on_meal",
    "fieldname": "custom_meal_discount_remarks",
+   "label": "Meal Discount Remarks",
    "fieldtype": "Small Text",
-   "label": "Meal Discount Remarks"
+   "depends_on": "custom_discount_on_meal"
   },
   {
-   "default": "0",
    "fieldname": "custom_airport_transport",
+   "label": "Airport Transport",
    "fieldtype": "Check",
-   "label": "Airport Transport"
+   "depends_on": "lodging_required"
   },
   {
-   "depends_on": "custom_airport_transport",
    "fieldname": "custom_airport_transport_remarks",
+   "label": "Airport Transport Remarks",
    "fieldtype": "Small Text",
-   "label": "Airport Transport Remarks"
+   "depends_on": "custom_airport_transport"
   },
   {
-   "default": "0",
    "fieldname": "custom_break_fast",
+   "label": "Break Fast",
    "fieldtype": "Check",
-   "label": "Break Fast"
+   "depends_on": "lodging_required"
   },
   {
-   "default": "0",
+   "fieldname": "custom_break_fast_remarks",
+   "label": "Break Fast Remarks",
+   "fieldtype": "Small Text",
+   "depends_on": "custom_break_fast"
+  },
+  {
    "fieldname": "custom_wifi",
+   "label": "Wifi",
    "fieldtype": "Check",
-   "label": "Wifi"
+   "depends_on": "lodging_required"
+  },
+  {
+   "fieldname": "custom_wifi_remarks",
+   "label": "Wifi Remarks",
+   "fieldtype": "Small Text",
+   "depends_on": "custom_wifi"
   },
   {
    "fieldname": "custom_column_break_9gose",
@@ -236,72 +300,92 @@
   },
   {
    "fieldname": "custom_hotel_invoice_details",
+   "label": "Hotel Invoice Details",
    "fieldtype": "Heading",
-   "label": "Hotel Invoice Details"
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_hotel_invoice_id",
+   "label": "Hotel Invoice ID",
    "fieldtype": "Data",
-   "label": "Hotel Invoice ID"
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_hotel_booking_vendor_name",
-   "fieldtype": "Link",
    "label": "Hotel Booking Vendor",
-   "options": "Supplier"
+   "fieldtype": "Link",
+   "options": "Supplier",
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_service_category",
-   "fieldtype": "Link",
    "label": "Service Category",
-   "options": "Item"
+   "fieldtype": "Link",
+   "options": "Item",
+   "depends_on": "lodging_required",
+   "default": "Hotel Booking"
   },
   {
    "fieldname": "custom_payment_terms_for_hotel_booking",
-   "fieldtype": "Select",
    "label": "Payment Terms for Hotel Booking",
-   "options": "\nB2C\nDirect Payment"
+   "fieldtype": "Select",
+   "options": "\nB2C\nDirect Payment\nPayment Done",
+   "depends_on": "lodging_required"
+  },
+  {
+   "fieldname": "custom_hotel_invoice",
+   "label": "Hotel Invoice",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_payment_terms_for_hotel_booking == \"B2C\" || doc.custom_payment_terms_for_hotel_booking == \"Payment Done\""
   },
   {
    "fieldname": "custom_hotel_cost_per_day",
+   "label": "Hotel Cost per Day",
    "fieldtype": "Currency",
-   "label": "Hotel Cost per Day"
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_total_hotel_charge",
+   "label": "Total Hotel Charge",
    "fieldtype": "Currency",
-   "label": "Total Hotel Charge"
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_total_hotel_charge_as_per_invoice",
+   "label": "Total Hotel Charge as per Invoice",
    "fieldtype": "Currency",
-   "label": "Total Hotel Charge as per Invoice"
+   "depends_on": "eval:doc.lodging_required && doc.custom_payment_terms_for_hotel_booking != \"Direct Payment\""
   },
   {
    "fieldname": "custom_hotel_payment_status",
-   "fieldtype": "Select",
    "label": "Hotel Payment Status",
-   "options": "\nPaid\nUnpaid"
+   "fieldtype": "Select",
+   "options": "\nPaid\nUnpaid",
+   "depends_on": "eval:doc.lodging_required && doc.custom_payment_terms_for_hotel_booking != \"Direct Payment\""
   },
   {
    "fieldname": "custom_paid_amount_hotel",
+   "label": "Paid Amount (Hotel)",
    "fieldtype": "Currency",
-   "label": "Paid Amount (Hotel)"
+   "depends_on": "eval:doc.lodging_required && doc.custom_payment_terms_for_hotel_booking != \"Direct Payment\""
   },
   {
    "fieldname": "custom_outstanding_amount_hotel",
+   "label": "Outstanding Amount (Hotel)",
    "fieldtype": "Currency",
-   "label": "Outstanding Amount (Hotel)"
+   "depends_on": "eval:doc.lodging_required && doc.custom_payment_terms_for_hotel_booking != \"Direct Payment\""
   },
   {
    "fieldname": "custom_create_purchase_invoice_hotel",
+   "label": "Create Purchase Invoice Hotel",
    "fieldtype": "Button",
-   "label": "Create Purchase Invoice"
+   "depends_on": "lodging_required"
   },
   {
    "fieldname": "custom_send_email_hotel",
+   "label": "Send Email Hotel",
    "fieldtype": "Button",
-   "label": "Send Email"
+   "depends_on": "lodging_required"
   },
   {
    "default": "0",
@@ -310,23 +394,11 @@
    "hidden": 1,
    "label": "Hotel Email Sent",
    "read_only": 1
-  },
-  {
-   "fieldname": "column_break_qnko",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_vibp",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_gpok",
-   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-05 10:01:41.921152",
+ "modified": "2026-07-08 12:10:46.530888",
  "modified_by": "Administrator",
  "module": "Harro",
  "name": "Travel Hotel Booking",

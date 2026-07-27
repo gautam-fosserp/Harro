@@ -8,6 +8,19 @@ const TRAVEL_SEGMENT_STATUS_CLASS = {
     "Rescheduled": "tp-status-rescheduled",
 };
 
+/**
+ * Handles:
+ *   1. "Add Traveller" grid button relabeling
+ *   2. Auto-population of Travel Requestor on new documents
+ *   3. Workflow interception for "Send to Travel Manager for Travel Plan
+ *      Update" — validates Claim Status on all rows, then shows a
+ *      read-only Review Confirmation dialog before applying the workflow
+ *      action
+ *   4. Claim Status mutual exclusivity on child table rows
+ *   5. Visa status lookup + dialog when an Employee is set on a child row
+ *      (International travel only), with Visa Request creation shortcut
+ */
+
 function inject_travel_segment_styles() {
     if (document.getElementById("tp-segment-styles")) return;
     const style = document.createElement("style");
@@ -192,11 +205,20 @@ const TRAVEL_SEGMENT_TYPES = [
         doctype: "Travel Flight Details",
         html_field: "flight_segments_html",
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_flight_segments",
-        add_label: __("Add Flight"),
+        add_label: __("Add Sector"),
         label_fn: (row) => `${row.custom_onward_travel_date || "—"} → ${row.custom_return_travel_date || "—"}`,
         meta_fn: (row) => row.custom_flight_booking_status || __("Draft"),
         anchor_field: "custom_flight_details",
         section_label: __("Flight Details"),
+
+        // maps itinerary row fields -> Travel Flight Details fields
+        prefill_fields: (itinerary_row) => ({
+            custom_onward_travel_date: itinerary_row.custom_onward_travel_date,
+            custom_return_travel_date: itinerary_row.custom_return_travel_date,
+            custom_return_travel_from: itinerary_row.travel_from,
+            custom_return_travel_to: itinerary_row.travel_to,
+        }),
+
         legacy_fields: [
             "custom_flight_details", "custom_flight_booking_details", "custom_onward_travel_date",
             "custom_return_travel_date", "custom_return_travel_from", "custom_return_travel_to",
@@ -220,7 +242,7 @@ const TRAVEL_SEGMENT_TYPES = [
         doctype: "Travel Hotel Booking",
         html_field: "hotel_segments_html",
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_hotel_segments",
-        add_label: __("Add Hotel"),
+        add_label: __("Add Sector"),
         label_fn: (row) => `${row.custom_hotel_name || __("Hotel")}`,
         meta_fn: (row) => `${row.check_in_date || "—"} → ${row.check_out_date || "—"}`,
         anchor_field: "custom_section_break_q45fn",
@@ -243,7 +265,7 @@ const TRAVEL_SEGMENT_TYPES = [
         doctype: "Travel Taxi Details",
         html_field: "taxi_segments_html",
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_taxi_segments",
-        add_label: __("Add Taxi"),
+        add_label: __("Add Sector"),
         label_fn: (row) => `${row.custom_taxi_type || __("Taxi")}`,
         meta_fn: (row) => row.custom_driver_name ? __("Driver: {0}", [row.custom_driver_name]) : __("No driver assigned"),
         anchor_field: "custom_taxi_details",
@@ -273,39 +295,39 @@ const TRAVEL_SEGMENT_TYPES = [
 
 
 const TRAVEL_PLANNING = {
-	CHILD_DOCTYPE: "Travel Planning Employee Details",
-	GRID_FIELDNAME: "travel_itinerary",
-	WORKFLOW_ACTION_REVIEW: "Send to Travel Manager for Travel Plan Update",
-	CLAIM_STATUS_FIELDS: [
-		"custom_harro_claim",
-		"custom_customer_claim",
-		"custom_no_claim",
-		"custom_yet_to_decided",
-	],
+    CHILD_DOCTYPE: "Travel Planning Employee Details",
+    GRID_FIELDNAME: "travel_itinerary",
+    WORKFLOW_ACTION_REVIEW: "Send to Travel Manager for Travel Plan Update",
+    CLAIM_STATUS_FIELDS: [
+        "custom_harro_claim",
+        "custom_customer_claim",
+        "custom_no_claim",
+        "custom_yet_to_decided",
+    ],
 };
 
 const VISA_DIALOG_CONFIG = {
-	valid: {
-		indicator: "green",
-		status_text: "✔ Visa is Valid",
-		color: "#28a745",
-		bg: "#d4edda",
-		show_action: false,
-	},
-	expired: {
-		indicator: "orange",
-		status_text: "✖ Visa Expired",
-		color: "#c0392b",
-		bg: "#f8d7da",
-		show_action: true,
-	},
-	not_found: {
-		indicator: "grey",
-		status_text: "— No Visa Record Found",
-		color: "#6c757d",
-		bg: "#e2e3e5",
-		show_action: true,
-	},
+    valid: {
+        indicator: "green",
+        status_text: "✔ Visa is Valid",
+        color: "#28a745",
+        bg: "#d4edda",
+        show_action: false,
+    },
+    expired: {
+        indicator: "orange",
+        status_text: "✖ Visa Expired",
+        color: "#c0392b",
+        bg: "#f8d7da",
+        show_action: true,
+    },
+    not_found: {
+        indicator: "grey",
+        status_text: "— No Visa Record Found",
+        color: "#6c757d",
+        bg: "#e2e3e5",
+        show_action: true,
+    },
 };
 
 frappe.ui.form.on("Travel Planning", {
@@ -323,12 +345,12 @@ frappe.ui.form.on("Travel Planning", {
         });
     },
     onload(frm) {
-		relabel_add_traveller_button(frm);
-	},
-	refresh(frm) {
         relabel_add_traveller_button(frm);
-		auto_set_travel_requestor(frm);
-		bind_workflow_review_interception(frm);
+    },
+    refresh(frm) {
+        relabel_add_traveller_button(frm);
+        auto_set_travel_requestor(frm);
+        bind_workflow_review_interception(frm);
 
         set_profit_color(frm);
         render_all_segment_lists(frm);
@@ -338,7 +360,8 @@ frappe.ui.form.on("Travel Planning", {
         const allowed_roles = [
             "Travel Manager",
             "Accounts Manager",
-            "Accounts User"
+            "Accounts User",
+            "Employee"
         ];
 
         // Check if current user has any allowed role
@@ -395,8 +418,21 @@ frappe.ui.form.on("Travel Planning", {
                     }
                 });
             }, __("Create"));
+
+            frm.add_custom_button(__("Employee Advance"), () => {
+                frappe.call({
+                    method: "harro.harro.doctype.travel_planning.travel_planning.make_employee_advance",
+                    args: {source_name: frm.doc.name},
+                    callback: function(r) {
+                        if (r.message) {
+                            frappe.model.sync(r.message);
+                            frappe.set_route("Form", r.message.doctype, r.message.name);
+                        }
+                    }
+                });
+            }, __("Create"));
         }
-	},
+    },
     custom_total_income_from_customer: function(frm) {
         calculate_profit(frm);
     },
@@ -422,10 +458,10 @@ frappe.ui.form.on("Travel Planning", {
  * Needs to run on both onload and refresh since the grid can be re-rendered.
  */
 function relabel_add_traveller_button(frm) {
-	const field = frm.get_field(TRAVEL_PLANNING.GRID_FIELDNAME);
-	if (field?.grid?.wrapper) {
-		field.grid.wrapper.find(".grid-add-row").text(__("Add Traveller"));
-	}
+    const field = frm.get_field(TRAVEL_PLANNING.GRID_FIELDNAME);
+    if (field?.grid?.wrapper) {
+        field.grid.wrapper.find(".grid-add-row").text(__("Add Traveller"));
+    }
 }
 
 /**
@@ -433,18 +469,18 @@ function relabel_add_traveller_button(frm) {
  * linked to the logged-in user.
  */
 function auto_set_travel_requestor(frm) {
-	if (!frm.is_new() || frm.doc.travel_requestor) return;
+    if (!frm.is_new() || frm.doc.travel_requestor) return;
 
-	frappe.db
-		.get_value("Employee", { user_id: frappe.session.user }, "name")
-		.then((r) => {
-			if (r.message?.name) {
-				frm.set_value("travel_requestor", r.message.name);
-			}
-		})
-		.catch((err) => {
-			console.error("Failed to auto-set Travel Requestor:", err);
-		});
+    frappe.db
+        .get_value("Employee", { user_id: frappe.session.user }, "name")
+        .then((r) => {
+            if (r.message?.name) {
+                frm.set_value("travel_requestor", r.message.name);
+            }
+        })
+        .catch((err) => {
+            console.error("Failed to auto-set Travel Requestor:", err);
+        });
 }
 
 /**
@@ -454,28 +490,28 @@ function auto_set_travel_requestor(frm) {
  * namespaced handler is removed first to avoid stacking duplicate handlers.
  */
 function bind_workflow_review_interception(frm) {
-	$(document).off("mousedown.tp_workflow");
+    $(document).off("mousedown.tp_workflow");
 
-	$(document).on(
-		"mousedown.tp_workflow",
-		"a.grey-link.dropdown-item",
-		function (e) {
-			const action = $(this).text().trim();
-			if (action !== TRAVEL_PLANNING.WORKFLOW_ACTION_REVIEW) return;
+    $(document).on(
+        "mousedown.tp_workflow",
+        "a.grey-link.dropdown-item",
+        function (e) {
+            const action = $(this).text().trim();
+            if (action !== TRAVEL_PLANNING.WORKFLOW_ACTION_REVIEW) return;
 
-			e.preventDefault();
-			e.stopImmediatePropagation();
-			e.stopPropagation();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            e.stopPropagation();
 
-			close_dropdown($(this));
-			handle_send_to_travel_manager(frm, action);
-		}
-	);
+            close_dropdown($(this));
+            handle_send_to_travel_manager(frm, action);
+        }
+    );
 }
 
 function close_dropdown($link) {
-	$link.closest(".dropdown").removeClass("show");
-	$link.closest(".dropdown-menu").removeClass("show");
+    $link.closest(".dropdown").removeClass("show");
+    $link.closest(".dropdown-menu").removeClass("show");
 }
 
 /**
@@ -484,34 +520,34 @@ function close_dropdown($link) {
  * a Claim Status selection.
  */
 function handle_send_to_travel_manager(frm, action) {
-	const invalid_rows = get_rows_missing_claim_status(frm);
+    const invalid_rows = get_rows_missing_claim_status(frm);
 
-	if (invalid_rows.length > 0) {
-		frappe.msgprint({
-			title: __("Claim Status Required"),
-			indicator: "red",
-			message: __(
-				"Please select a Claim Status for traveller row(s) {0} before sending to the Travel Manager.",
-				[invalid_rows.join(", ")]
-			),
-		});
-		return;
-	}
+    if (invalid_rows.length > 0) {
+        frappe.msgprint({
+            title: __("Claim Status Required"),
+            indicator: "red",
+            message: __(
+                "Please select a Claim Status for traveller row(s) {0} before sending to the Travel Manager.",
+                [invalid_rows.join(", ")]
+            ),
+        });
+        return;
+    }
 
-	show_review_confirmation_dialog(frm, action);
+    show_review_confirmation_dialog(frm, action);
 }
 
 function get_rows_missing_claim_status(frm) {
-	const invalid_rows = [];
+    const invalid_rows = [];
 
-	(frm.doc[TRAVEL_PLANNING.GRID_FIELDNAME] || []).forEach((row, idx) => {
-		const selected = TRAVEL_PLANNING.CLAIM_STATUS_FIELDS.filter((f) => row[f]);
-		if (selected.length === 0) {
-			invalid_rows.push(idx + 1);
-		}
-	});
+    (frm.doc[TRAVEL_PLANNING.GRID_FIELDNAME] || []).forEach((row, idx) => {
+        const selected = TRAVEL_PLANNING.CLAIM_STATUS_FIELDS.filter((f) => row[f]);
+        if (selected.length === 0) {
+            invalid_rows.push(idx + 1);
+        }
+    });
 
-	return invalid_rows;
+    return invalid_rows;
 }
 
 /**
@@ -519,42 +555,43 @@ function get_rows_missing_claim_status(frm) {
  * action is actually applied via frappe.xcall.
  */
 function show_review_confirmation_dialog(frm, action) {
-	const d = new frappe.ui.Dialog({
-		title: __("Review Confirmation"),
-		size: "extra-large",
-		fields: [{ fieldtype: "HTML", fieldname: "travel_summary" }],
-		primary_action_label: __("Yes, Proceed"),
-		primary_action() {
-			d.hide();
-			apply_workflow_action(frm, action);
-		},
-		secondary_action_label: __("No, Review Again"),
-		secondary_action() {
-			d.hide();
-		},
-	});
+    const d = new frappe.ui.Dialog({
+        title: __("Review Confirmation"),
+        size: "extra-large",
+        fields: [{ fieldtype: "HTML", fieldname: "travel_summary" }],
+        primary_action_label: __("Yes, Proceed"),
+        primary_action() {
+            d.hide();
+            apply_workflow_action(frm, action);
+        },
+        secondary_action_label: __("No, Review Again"),
+        secondary_action() {
+            d.hide();
+        },
+    });
 
 	d.fields_dict.travel_summary.$wrapper.html(build_review_html(frm));
 	d.show();
+	d.$wrapper.find(".modal-dialog").css({ width: "70%", maxWidth: "70%" });
 }
 
 function apply_workflow_action(frm, action) {
-	frappe.xcall("frappe.model.workflow.apply_workflow", {
-		doc: frm.doc,
-		action: action,
-	})
-		.then((doc) => {
-			frappe.model.sync(doc);
-			frm.refresh();
-		})
-		.catch((err) => {
-			frappe.msgprint({
-				title: __("Workflow Action Failed"),
-				indicator: "red",
-				message: __("Could not apply the workflow action. Please try again."),
-			});
-			console.error("apply_workflow failed:", err);
-		});
+    frappe.xcall("frappe.model.workflow.apply_workflow", {
+        doc: frm.doc,
+        action: action,
+    })
+        .then((doc) => {
+            frappe.model.sync(doc);
+            frm.refresh();
+        })
+        .catch((err) => {
+            frappe.msgprint({
+                title: __("Workflow Action Failed"),
+                indicator: "red",
+                message: __("Could not apply the workflow action. Please try again."),
+            });
+            console.error("apply_workflow failed:", err);
+        });
 }
 
 /**
@@ -562,120 +599,120 @@ function apply_workflow_action(frm, action) {
  * are HTML-escaped to avoid injecting markup via doc/child-table data.
  */
 function build_review_html(frm) {
-	const header_rows = [
-		["Travel Type", frm.doc.travel_type, "Purpose of Travel", frm.doc.purpose_of_travel],
-		["Customer", frm.doc.custom_customer, "Country", frm.doc.custom_country],
-		["BA Number", frm.doc.ba_number, "HH Number", frm.doc.custom_hh_number],
-	]
-		.map(
-			([l1, v1, l2, v2]) => `
-				<tr>
-					<td><b>${esc(l1)}</b></td>
-					<td>${esc(v1) || "-"}</td>
-					<td><b>${esc(l2)}</b></td>
-					<td>${esc(v2) || "-"}</td>
-				</tr>`
-		)
-		.join("");
+    const header_rows = [
+        ["Travel Type", frm.doc.travel_type, "Purpose of Travel", frm.doc.purpose_of_travel],
+        ["Customer", frm.doc.custom_customer, "Country", frm.doc.custom_country],
+        ["BA Number", frm.doc.ba_number, "HH Number", frm.doc.custom_hh_number],
+    ]
+        .map(
+            ([l1, v1, l2, v2]) => `
+                <tr>
+                    <td><b>${esc(l1)}</b></td>
+                    <td>${esc(v1) || "-"}</td>
+                    <td><b>${esc(l2)}</b></td>
+                    <td>${esc(v2) || "-"}</td>
+                </tr>`
+        )
+        .join("");
 
-	const traveller_columns = [
-		"Sr", "Employee", "Employee HH ID", "Employee Name", "Status", "Contact Email",
-		"Onward Travel Date", "Travel From", "Travel To", "Return Travel Date",
-		"Return Travel From", "Return Travel To", "Flight Booking Status", "Stay Required",
-		"Check-in Date", "Check-out Date", "Room Night", "Hotel Booking Status",
-		"Taxi Required", "Pan-India Taxi", "Local Taxi", "Out of India",
-	];
+    const traveller_columns = [
+        "Sr", "Employee", "Employee HH ID", "Employee Name", "Status", "Contact Email",
+        "Onward Travel Date", "Travel From", "Travel To", "Return Travel Date",
+        "Return Travel From", "Return Travel To", "Flight Booking Status", "Stay Required",
+        "Check-in Date", "Check-out Date", "Room Night", "Hotel Booking Status",
+        "Taxi Required", "Pan-India Taxi", "Local Taxi", "Out of India",
+    ];
 
-	const traveller_rows = (frm.doc[TRAVEL_PLANNING.GRID_FIELDNAME] || [])
-		.map((row, idx) => build_traveller_row_html(row, idx))
-		.join("");
+    const traveller_rows = (frm.doc[TRAVEL_PLANNING.GRID_FIELDNAME] || [])
+        .map((row, idx) => build_traveller_row_html(row, idx))
+        .join("");
 
-	return `
-		<style>
-			.travel-review-table th,
-			.travel-review-table td { vertical-align: top !important; }
-			.travel-review-table th {
-				text-align: left !important;
-				white-space: nowrap;
-				padding-top: 8px !important;
-			}
-			.travel-review-table td { white-space: nowrap; }
-		</style>
+    return `
+        <style>
+            .travel-review-table th,
+            .travel-review-table td { vertical-align: top !important; }
+            .travel-review-table th {
+                text-align: left !important;
+                white-space: nowrap;
+                padding-top: 8px !important;
+            }
+            .travel-review-table td { white-space: nowrap; }
+        </style>
 
-		<div style="padding: 10px; max-height: 600px; overflow-y: auto;">
-			<div class="alert alert-warning">
-				<b>${__("Please verify all Travel Planning details before submission.")}</b>
-			</div>
+        <div style="padding: 10px; max-height: 600px; overflow-y: auto;">
+            <div class="alert alert-warning">
+                <b>${__("Please verify all Travel Planning details before submission.")}</b>
+            </div>
 
-			<table class="table table-bordered">
-				<tbody>${header_rows}</tbody>
-			</table>
+            <table class="table table-bordered">
+                <tbody>${header_rows}</tbody>
+            </table>
 
-			<h4 style="margin-top:20px;">${__("Traveller Details")}</h4>
+            <h4 style="margin-top:20px;">${__("Traveller Details")}</h4>
 
-			<table class="table table-bordered table-sm travel-review-table">
-				<thead>
-					<tr>${traveller_columns.map((c) => `<th>${__(c)}</th>`).join("")}</tr>
-				</thead>
-				<tbody>${traveller_rows}</tbody>
-			</table>
+            <table class="table table-bordered table-sm travel-review-table">
+                <thead>
+                    <tr>${traveller_columns.map((c) => `<th>${__(c)}</th>`).join("")}</tr>
+                </thead>
+                <tbody>${traveller_rows}</tbody>
+            </table>
 
-			<div style="margin-top:15px; padding:10px; background:#fff3cd; border:1px solid #ffeeba; border-radius:4px;">
-				${__("Please review the above information carefully before sending it to the Travel Manager.")}
-			</div>
-		</div>`;
+            <div style="margin-top:15px; padding:10px; background:#fff3cd; border:1px solid #ffeeba; border-radius:4px;">
+                ${__("Please review the above information carefully before sending it to the Travel Manager.")}
+            </div>
+        </div>`;
 }
 
 
 function build_traveller_row_html(row, idx) {
-	const check = (val) => (val ? "✓" : "");
+    const check = (val) => (val ? "✓" : "");
 
-	const cells = [
-		idx + 1,
-		row.custom_employee || "-",
-		row.employee_hh_id || "-",
-		row.employee_name || "-",
-		row.custom_status || "-",
-		row.custom_contact_email || "-",
-		row.custom_onward_travel_date || "-",
-		row.travel_from || "-",
-		row.travel_to || "-",
-		row.custom_return_travel_date || "-",
-		row.custom_return_travel_from || "-",
-		row.custom_return_travel_to || "-",
-		row.custom_flight_booking_status || "-",
-	].map((v) => `<td>${esc(v)}</td>`);
+    const cells = [
+        idx + 1,
+        row.custom_employee || "-",
+        row.employee_hh_id || "-",
+        row.employee_name || "-",
+        row.custom_status || "-",
+        row.custom_contact_email || "-",
+        row.custom_onward_travel_date || "-",
+        row.travel_from || "-",
+        row.travel_to || "-",
+        row.custom_return_travel_date || "-",
+        row.custom_return_travel_from || "-",
+        row.custom_return_travel_to || "-",
+        row.custom_flight_booking_status || "-",
+    ].map((v) => `<td>${esc(v)}</td>`);
 
-	const checkbox_cells = [
-		row.lodging_required,
-	].map((v) => `<td style="text-align:center">${check(v)}</td>`);
+    const checkbox_cells = [
+        row.lodging_required,
+    ].map((v) => `<td style="text-align:center">${check(v)}</td>`);
 
-	const dates_and_room = [
-		row.check_in_date || "-",
-		row.check_out_date || "-",
-		row.room_night || 0,
-		row.custom_hotel_booking_status || "-",
-	].map((v) => `<td>${esc(v)}</td>`);
+    const dates_and_room = [
+        row.check_in_date || "-",
+        row.check_out_date || "-",
+        row.room_night || 0,
+        row.custom_hotel_booking_status || "-",
+    ].map((v) => `<td>${esc(v)}</td>`);
 
-	const taxi_checkbox_cells = [
-		row.custom_taxi_required,
-		row.custom_airport_transfer,
-		row.custom_daily_transfer,
-		row.custom_out_of_india,
-	].map((v) => `<td style="text-align:center">${check(v)}</td>`);
+    const taxi_checkbox_cells = [
+        row.custom_taxi_required,
+        row.custom_airport_transfer,
+        row.custom_daily_transfer,
+        row.custom_out_of_india,
+    ].map((v) => `<td style="text-align:center">${check(v)}</td>`);
 
-	return `<tr>${cells.join("")}${checkbox_cells.join("")}${dates_and_room.join("")}${taxi_checkbox_cells.join("")}</tr>`;
+    return `<tr>${cells.join("")}${checkbox_cells.join("")}${dates_and_room.join("")}${taxi_checkbox_cells.join("")}</tr>`;
 }
 
 /** Minimal HTML-escaping helper for values interpolated into dialog markup. */
 function esc(value) {
-	if (value === undefined || value === null) return "";
-	return String(value)
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
+    if (value === undefined || value === null) return "";
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 function calculate_outstanding_claims(frm) {
@@ -949,21 +986,21 @@ frappe.ui.form.on("Travel Planning Employee Details" , {
         setTimeout(() => refresh_open_row_heading(frm, cdn), 300);
     },
     custom_harro_claim(frm, cdt, cdn) {
-		enforce_exclusive_claim_status(frm, cdt, cdn, "custom_harro_claim");
-	},
+        enforce_exclusive_claim_status(frm, cdt, cdn, "custom_harro_claim");
+    },
     custom_customer_claim(frm, cdt, cdn) {
-		enforce_exclusive_claim_status(frm, cdt, cdn, "custom_customer_claim");
-	},
-	custom_no_claim(frm, cdt, cdn) {
-		enforce_exclusive_claim_status(frm, cdt, cdn, "custom_no_claim");
-	},
-	custom_yet_to_decided(frm, cdt, cdn) {
-		enforce_exclusive_claim_status(frm, cdt, cdn, "custom_yet_to_decided");
-	},
+        enforce_exclusive_claim_status(frm, cdt, cdn, "custom_customer_claim");
+    },
+    custom_no_claim(frm, cdt, cdn) {
+        enforce_exclusive_claim_status(frm, cdt, cdn, "custom_no_claim");
+    },
+    custom_yet_to_decided(frm, cdt, cdn) {
+        enforce_exclusive_claim_status(frm, cdt, cdn, "custom_yet_to_decided");
+    },
 
-	custom_employee(frm, cdt, cdn) {
-		handle_employee_selected(frm, cdt, cdn);
-	},
+    custom_employee(frm, cdt, cdn) {
+        handle_employee_selected(frm, cdt, cdn);
+    },
 });
 
 function add_segment_buttons(frm, cdt, cdn) {
@@ -1068,6 +1105,9 @@ function render_row_segment_section(frm, grid_row, segment_type, employee, cdn) 
 }
 
 function open_new_segment(frm, segment_type, employee, cdn) {
+    const itinerary_row = locals["Travel Planning Employee Details"][cdn];
+    const contact_email = itinerary_row ? itinerary_row.custom_contact_email : null;
+
     frappe.call({
         method: segment_type.get_method,
         args: { travel_planning: frm.doc.name },
@@ -1077,145 +1117,163 @@ function open_new_segment(frm, segment_type, employee, cdn) {
                 ? Math.max(...existing.map((seg) => seg.segment_no || 0)) + 1
                 : 1;
 
-            frappe.route_options = { travel_planning: frm.doc.name };
-            frappe.new_doc(segment_type.doctype, {
+            const prefill = (itinerary_row && segment_type.prefill_fields)
+                ? segment_type.prefill_fields(itinerary_row)
+                : {};
+
+
+            // frappe.route_options = { travel_planning: frm.doc.name };
+            // frappe.new_doc(segment_type.doctype, {
+            //     travel_planning: frm.doc.name,
+            //     employee: employee,
+            //     travel_itinerary_row: cdn,
+            //     segment_no: next_segment_no,
+            //     contact_email: contact_email,
+            // });
+
+            // Pass all values through route_options
+            frappe.route_options = {
                 travel_planning: frm.doc.name,
                 employee: employee,
                 travel_itinerary_row: cdn,
                 segment_no: next_segment_no,
-            });
+                contact_email: contact_email,
+                ...prefill,
+            };
+
+            frappe.new_doc(segment_type.doctype);
         },
     });
 }
 
 function open_itinerary_row_from_route(frm) {
-    if (!frappe.route_options || !frappe.route_options.open_itinerary_row) return;
+if (!frappe.route_options || !frappe.route_options.open_itinerary_row) return;
 
-    const cdn = frappe.route_options.open_itinerary_row;
-    delete frappe.route_options.open_itinerary_row;
+const cdn = frappe.route_options.open_itinerary_row;
+delete frappe.route_options.open_itinerary_row;
 
-    const grid = frm.fields_dict.travel_itinerary.grid;
-    const grid_row = grid.grid_rows_by_docname[cdn];
-    if (grid_row) {
-        grid_row.toggle_view(true);
-    }
+const grid = frm.fields_dict.travel_itinerary.grid;
+const grid_row = grid.grid_rows_by_docname[cdn];
+if (grid_row) {
+    grid_row.toggle_view(true);
+}
 }
 
 function render_all_segment_lists(frm) {
-    if (frm.is_new()) return;
-    TRAVEL_SEGMENT_TYPES.forEach((segment_type) => render_segment_list(frm, segment_type));
+if (frm.is_new()) return;
+TRAVEL_SEGMENT_TYPES.forEach((segment_type) => render_segment_list(frm, segment_type));
 }
 
 function render_segment_list(frm, segment_type) {
-    inject_travel_segment_styles();
+inject_travel_segment_styles();
 
-    frappe.call({
-        method: segment_type.get_method,
-        args: { travel_planning: frm.doc.name },
-        callback: function (r) {
-            const rows = r.message || [];
-            const wrapper = frm.get_field(segment_type.html_field).$wrapper;
-            wrapper.empty();
+frappe.call({
+    method: segment_type.get_method,
+    args: { travel_planning: frm.doc.name },
+    callback: function (r) {
+        const rows = r.message || [];
+        const wrapper = frm.get_field(segment_type.html_field).$wrapper;
+        wrapper.empty();
 
-            const $block = $(`
-                <div class="tp-segment-block">
-                    <div class="tp-segment-heading">
-                        ${TRAVEL_SEGMENT_ICONS[segment_type.doctype]}
-                        <span>${segment_type.section_label} — ${__("All Employees")}</span>
-                    </div>
-                    <div class="tp-segment-list"></div>
+        const $block = $(`
+            <div class="tp-segment-block">
+                <div class="tp-segment-heading">
+                    ${TRAVEL_SEGMENT_ICONS[segment_type.doctype]}
+                    <span>${segment_type.section_label} — ${__("All Employees")}</span>
                 </div>
-            `).appendTo(wrapper);
-            const $list = $block.find(".tp-segment-list");
+                <div class="tp-segment-list"></div>
+            </div>
+        `).appendTo(wrapper);
+        const $list = $block.find(".tp-segment-list");
 
-            if (!rows.length) {
-                $list.html(`<div class="tp-segment-empty">${__("No segments added yet.")}</div>`);
-                return;
-            }
+        if (!rows.length) {
+            $list.html(`<div class="tp-segment-empty">${__("No segments added yet.")}</div>`);
+            return;
+        }
 
-            rows.forEach((row) => {
-                const status_class = TRAVEL_SEGMENT_STATUS_CLASS[row.custom_flight_booking_status || row.custom_hotel_booking_status] || "";
-                const $stub = $(`
-                    <div class="tp-stub ${status_class}">
-                        <div class="tp-stub-body">
-                            <div class="tp-stub-title">${frappe.utils.escape_html(row.employee_name || row.employee || "")} — ${frappe.utils.escape_html(segment_type.label_fn(row))}</div>
-                            <div class="tp-stub-meta">${__("Segment")} ${row.segment_no || ""} · ${frappe.utils.escape_html(segment_type.meta_fn(row))}</div>
-                        </div>
-                        <div class="tp-stub-actions">
-                            <button class="tp-view" title="${__("View")}">${ICON_VIEW}</button>
-                            <button class="tp-edit" title="${__("Edit")}">${ICON_EDIT}</button>
-                            <button class="tp-delete tp-danger" title="${__("Delete")}">${ICON_DELETE}</button>
-                        </div>
+        rows.forEach((row) => {
+            const status_class = TRAVEL_SEGMENT_STATUS_CLASS[row.custom_flight_booking_status || row.custom_hotel_booking_status] || "";
+            const $stub = $(`
+                <div class="tp-stub ${status_class}">
+                    <div class="tp-stub-body">
+                        <div class="tp-stub-title">${frappe.utils.escape_html(row.employee_name || row.employee || "")} — ${frappe.utils.escape_html(segment_type.label_fn(row))}</div>
+                        <div class="tp-stub-meta">${__("Segment")} ${row.segment_no || ""} · ${frappe.utils.escape_html(segment_type.meta_fn(row))}</div>
                     </div>
-                `);
+                    <div class="tp-stub-actions">
+                        <button class="tp-view" title="${__("View")}">${ICON_VIEW}</button>
+                        <button class="tp-edit" title="${__("Edit")}">${ICON_EDIT}</button>
+                        <button class="tp-delete tp-danger" title="${__("Delete")}">${ICON_DELETE}</button>
+                    </div>
+                </div>
+            `);
 
-                $stub.find(".tp-view").on("click", () => view_segment(segment_type, row));
-                $stub.find(".tp-edit").on("click", () => edit_segment(frm, segment_type, row));
-                $stub.find(".tp-delete").on("click", () => delete_segment(frm, segment_type, row));
+            $stub.find(".tp-view").on("click", () => view_segment(segment_type, row));
+            $stub.find(".tp-edit").on("click", () => edit_segment(frm, segment_type, row));
+            $stub.find(".tp-delete").on("click", () => delete_segment(frm, segment_type, row));
 
-                $list.append($stub);
-            });
-        },
-    });
+            $list.append($stub);
+        });
+    },
+});
 }
 
 function view_segment(segment_type, row) {
-    frappe.model.with_doctype(segment_type.doctype, () => {
-        frappe.call({
-            method: "frappe.client.get",
-            args: { doctype: segment_type.doctype, name: row.name },
-            callback: function (r) {
-                const doc = r.message;
-                if (!doc) return;
+frappe.model.with_doctype(segment_type.doctype, () => {
+    frappe.call({
+        method: "frappe.client.get",
+        args: { doctype: segment_type.doctype, name: row.name },
+        callback: function (r) {
+            const doc = r.message;
+            if (!doc) return;
 
-                const meta = frappe.get_meta(segment_type.doctype);
-                const dialog = new frappe.ui.Dialog({
-                    title: __("{0} — {1}", [segment_type.doctype, segment_type.label_fn(row)]),
-                    size: "large",
-                    fields: meta.fields
-                        .filter((df) => !frappe.model.no_value_type.includes(df.fieldtype) || df.fieldtype === "Attach")
-                        .map((df) => ({ ...df, read_only: 1 })),
-                });
-                dialog.set_values(doc);
-                dialog.show();
-            },
-        });
+            const meta = frappe.get_meta(segment_type.doctype);
+            const dialog = new frappe.ui.Dialog({
+                title: __("{0} — {1}", [segment_type.doctype, segment_type.label_fn(row)]),
+                size: "large",
+                fields: meta.fields
+                    .filter((df) => !frappe.model.no_value_type.includes(df.fieldtype) || df.fieldtype === "Attach")
+                    .map((df) => ({ ...df, read_only: 1 })),
+            });
+            dialog.set_values(doc);
+            dialog.show();
+        },
     });
+});
 }
 
 function edit_segment(frm, segment_type, row) {
-    frappe.route_options = { travel_planning: frm.doc.name };
-    frappe.set_route("Form", segment_type.doctype, row.name);
+frappe.route_options = { travel_planning: frm.doc.name };
+frappe.set_route("Form", segment_type.doctype, row.name);
 }
 
 function delete_segment(frm, segment_type, row) {
-    frappe.confirm(
-        __("Delete this record?") + `<br><b>${frappe.utils.escape_html(segment_type.label_fn(row))}</b>`,
-        () => {
-            frappe.call({
-                method: "harro.harro.doctype.travel_planning.travel_planning.delete_travel_segment",
-                args: { doctype: segment_type.doctype, name: row.name },
-                freeze: true,
-                callback: function (r) {
-                    if (!r.exc) {
-                        frappe.show_alert({ message: __("Deleted"), indicator: "green" });
-                        render_segment_list(frm, segment_type);
-                        refresh_open_row_segment_sections(frm);
-                    }
-                },
-            });
-        }
-    );
+frappe.confirm(
+    __("Delete this record?") + `<br><b>${frappe.utils.escape_html(segment_type.label_fn(row))}</b>`,
+    () => {
+        frappe.call({
+            method: "harro.harro.doctype.travel_planning.travel_planning.delete_travel_segment",
+            args: { doctype: segment_type.doctype, name: row.name },
+            freeze: true,
+            callback: function (r) {
+                if (!r.exc) {
+                    frappe.show_alert({ message: __("Deleted"), indicator: "green" });
+                    render_segment_list(frm, segment_type);
+                    refresh_open_row_segment_sections(frm);
+                }
+            },
+        });
+    }
+);
 }
 
 function refresh_open_row_segment_sections(frm) {
-    const grid = frm.fields_dict.travel_itinerary.grid;
-    Object.keys(grid.grid_rows_by_docname).forEach((cdn) => {
-        const grid_row = grid.grid_rows_by_docname[cdn];
-        if (grid_row && grid_row.grid_form && grid_row.grid_form.wrapper.is(":visible")) {
-            add_segment_buttons(frm, "Travel Planning Employee Details", cdn);
-        }
-    });
+const grid = frm.fields_dict.travel_itinerary.grid;
+Object.keys(grid.grid_rows_by_docname).forEach((cdn) => {
+    const grid_row = grid.grid_rows_by_docname[cdn];
+    if (grid_row && grid_row.grid_form && grid_row.grid_form.wrapper.is(":visible")) {
+        add_segment_buttons(frm, "Travel Planning Employee Details", cdn);
+    }
+});
 }
 
 /**
@@ -1373,96 +1431,96 @@ function create_visa_request(frm, emp, country) {
 }
 
 function calculate_total_flight_cost(frm, cdt, cdn) {
-    let row = locals[cdt][cdn];
-    let onward_flight_cost = row.custom_onward_flight_cost_as_per_invoice || 0;
-    let return_flight_cost = row.custom_return_flight_cost_as_per_invoice || 0;
-    let set_charge = row.custom_seat_charges || 0;
-    let baggage_cost = row.baggage_coast || 0;
-    let round_trip_cost = row.custom_round_trip_cost_as_per_invoice || 0;
+let row = locals[cdt][cdn];
+let onward_flight_cost = row.custom_onward_flight_cost_as_per_invoice || 0;
+let return_flight_cost = row.custom_return_flight_cost_as_per_invoice || 0;
+let set_charge = row.custom_seat_charges || 0;
+let baggage_cost = row.baggage_coast || 0;
+let round_trip_cost = row.custom_round_trip_cost_as_per_invoice || 0;
 
-    let total_flight_cost = onward_flight_cost + return_flight_cost + set_charge + baggage_cost + round_trip_cost;
-    frappe.model.set_value(cdt, cdn, "custom_total_flight_cost_as_per_invoice", total_flight_cost);
+let total_flight_cost = onward_flight_cost + return_flight_cost + set_charge + baggage_cost + round_trip_cost;
+frappe.model.set_value(cdt, cdn, "custom_total_flight_cost_as_per_invoice", total_flight_cost);
 }
 
 function calculate_total_hotel_charge(frm, cdt, cdn) {
-    let row = locals[cdt][cdn]
-    let cost_per_day = row.custom_hotel_cost_per_day || 0;
-    let nights = row.room_night || 0;
-    let total_hotel_charge = cost_per_day * nights
-    frappe.model.set_value(cdt, cdn, "custom_total_hotel_charge", total_hotel_charge);
+let row = locals[cdt][cdn]
+let cost_per_day = row.custom_hotel_cost_per_day || 0;
+let nights = row.room_night || 0;
+let total_hotel_charge = cost_per_day * nights
+frappe.model.set_value(cdt, cdn, "custom_total_hotel_charge", total_hotel_charge);
 }
 
 frappe.ui.form.on('Expense Details', {
-    create_purchase_invoice: function(frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
+create_purchase_invoice: function(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
 
-        frappe.call({
-            method: "harro.harro.api.get_purchase_invoice_defaults",
-            args: {
-                expense_detail_row: row,
-                travel_doc: frm.doc.name
-            },
-            callback: function(r) {
-                if (r.message) {
-                    console.log(r.message);
-                    frappe.set_route('Form', 'Purchase Invoice', r.message);
-                }
+    frappe.call({
+        method: "harro.harro.api.get_purchase_invoice_defaults",
+        args: {
+            expense_detail_row: row,
+            travel_doc: frm.doc.name
+        },
+        callback: function(r) {
+            if (r.message) {
+                console.log(r.message);
+                frappe.set_route('Form', 'Purchase Invoice', r.message);
             }
-        });
-    },
-    send_email: function(frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-
-        if (row.email_sent) {
-            frappe.msgprint("Email already sent for this row.");
-            return;
         }
+    });
+},
+send_email: function(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
 
-        frappe.call({
-            method: "harro.harro.api.send_email",
-            args: {
-                expense_detail_row: row,
-                travel_planning: frm.doc.name
-            },
-            callback: function(r) {
-                if (!r.exc) {
-                    frappe.msgprint("Email sent");
-
-                    // Mark locally and refresh grid
-                    row.email_sent = 1;
-                    frm.refresh_field("expense_details");
-                }
-            }
-        });
+    if (row.email_sent) {
+        frappe.msgprint("Email already sent for this row.");
+        return;
     }
+
+    frappe.call({
+        method: "harro.harro.api.send_email",
+        args: {
+            expense_detail_row: row,
+            travel_planning: frm.doc.name
+        },
+        callback: function(r) {
+            if (!r.exc) {
+                frappe.msgprint("Email sent");
+
+                // Mark locally and refresh grid
+                row.email_sent = 1;
+                frm.refresh_field("expense_details");
+            }
+        }
+    });
+}
 });
 
 function try_patch_grid_row_heading(frm) {
-    const grid = frm.fields_dict["travel_itinerary"]?.grid;
-    if (!grid || !grid.grid_rows || !grid.grid_rows.length) return;
+const grid = frm.fields_dict["travel_itinerary"]?.grid;
+if (!grid || !grid.grid_rows || !grid.grid_rows.length) return;
 
-    const proto = Object.getPrototypeOf(grid.grid_rows[0]);
-    if (proto.__employee_name_heading_patched) return;
+const proto = Object.getPrototypeOf(grid.grid_rows[0]);
+if (proto.__employee_name_heading_patched) return;
 
-    const original_show_form = proto.show_form;
+const original_show_form = proto.show_form;
 
-    proto.show_form = function () {
-        original_show_form.apply(this, arguments);
-        if (this.grid.df.fieldname === "travel_itinerary") {
-            const employee_name = this.doc.employee_name;
-            this.grid_form.wrapper.find(".grid-form-heading .panel-title").html(employee_name || "");
-        }
-    };
+proto.show_form = function () {
+    original_show_form.apply(this, arguments);
+    if (this.grid.df.fieldname === "travel_itinerary") {
+        const employee_name = this.doc.employee_name;
+        this.grid_form.wrapper.find(".grid-form-heading .panel-title").html(employee_name || "");
+    }
+};
 
-    proto.__employee_name_heading_patched = true;
+proto.__employee_name_heading_patched = true;
 }
 
 function refresh_open_row_heading(frm, cdn) {
-    const grid = frm.fields_dict["travel_itinerary"]?.grid;
-    if (!grid) return;
-    const row = grid.grid_rows_by_docname[cdn];
-    if (!row || !row.grid_form) return;
+const grid = frm.fields_dict["travel_itinerary"]?.grid;
+if (!grid) return;
+const row = grid.grid_rows_by_docname[cdn];
+if (!row || !row.grid_form) return;
 
-    const employee_name = row.doc.employee_name;
-    row.grid_form.wrapper.find(".grid-form-heading .panel-title").html(employee_name || "");
+const employee_name = row.doc.employee_name;
+row.grid_form.wrapper.find(".grid-form-heading .panel-title").html(employee_name || "");
 }

@@ -1,5 +1,6 @@
 frappe.ui.form.on("Task", {
     refresh:function(frm){
+        set_new_task_defaults(frm);
         if(frm.doc.working_status != "Work In Progress" && frm.doc.status != "Completed" && frm.doc.working_status != "On Hold"){
             frm.add_custom_button(__("Start Timer"), function(){
                 update_start_job_log(frm)
@@ -157,6 +158,19 @@ frappe.ui.form.on("Task", {
         })
     } 
 })
+
+// 
+function set_new_task_defaults(frm) {
+    let task_docfield = frm.get_docfield("depends_on", "task");
+    if (!task_docfield) return;
+
+    task_docfield.get_route_options_for_new_doc = function(control) {
+        return {
+            "parent_task": frm.doc.name,
+            "project": frm.doc.project
+        };
+    };
+}
 
 // 
 function add_task_progress(frm, completed, total) {

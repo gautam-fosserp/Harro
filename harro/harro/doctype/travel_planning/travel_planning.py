@@ -86,11 +86,19 @@ def send_flight_booking_emails(docname):
         "custom_travel_insurance",
         "custom_flight_bill",
         "custom_return_flight_ticket",
+        "custom_round_trip_ticket",
     ]
 
     requestor_name = frappe.db.get_value("Employee", doc.travel_requestor, "employee_name")
 
     for row in doc.travel_itinerary:
+        # skip rows that already got this email
+        if row.get("flight_booking_email_sent"):
+            continue
+
+        if not row.custom_contact_email:
+            continue
+
         attachments = [
             {"file_url": row.get(field)}
             for field in flight_attachment_fields
@@ -102,7 +110,7 @@ def send_flight_booking_emails(docname):
         if row.custom_contact_email:
             frappe.sendmail(
                 recipients=[row.custom_contact_email],
-                subject=f"{doc.name}: Ticket has been booked for {row.employee_name}",
+                subject=f"{doc.name}: Flight Ticket has been booked for {row.employee_name}",
                 message=f"""
                     Hello {row.employee_name},<br><br>
 
@@ -120,7 +128,10 @@ def send_flight_booking_emails(docname):
                 reference_name=doc.name
             )
 
-        # ── Email to Requestor 
+            # mark this row so it's not emailed again on a future transition
+            row.db_set("flight_booking_email_sent", 1)
+
+        # ── Email to Requestor
         # if doc.custom_requestor_contact_email:
         #     travel_request_link = f"""<a href="/app/travel-request/{row.travel_request}">{row.travel_request}</a>"""
 
@@ -145,6 +156,50 @@ def send_flight_booking_emails(docname):
         #         reference_name=doc.name
         #     )
 
+    # Additional flight segments (Travel Flight Details) — one email per segment,
+    # mirroring the primary itinerary row's email above.
+    segment_attachment_fields = [
+        "custom_flight_bill",
+        "custom_return_flight_ticket",
+        "custom_flight_invoice_attachment",
+        "custom_return_flight_invoice_attachment",
+    ]
+    for segment in frappe.get_all(
+        "Travel Flight Details",
+        filters={"travel_planning": docname},
+        fields=["name", "employee", "contact_email"] + segment_attachment_fields,
+    ):
+        if not segment.contact_email:
+            continue
+
+        employee_name = frappe.db.get_value("Employee", segment.employee, "employee_name") or segment.employee
+        attachments = [
+            {"file_url": segment.get(field)}
+            for field in segment_attachment_fields
+            if segment.get(field)
+        ]
+        travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
+
+        frappe.sendmail(
+            recipients=[segment.contact_email],
+            subject=f"{doc.name}: Ticket has been booked for {employee_name}",
+            message=f"""
+                Hello {employee_name},<br><br>
+
+                Your flight ticket has been booked.
+                Please find the ticket attachments below.<br><br>
+
+                <b>Travel Planning:</b> {travel_planning_link}<br>
+                <b>Employee:</b> {employee_name}<br><br>
+
+                Regards,<br>
+                <b>Travel Team</b>
+            """,
+            attachments=attachments,
+            reference_doctype=doc.doctype,
+            reference_name=doc.name
+        )
+
 
 def send_hotel_booking_emails(docname):
     doc = frappe.get_doc("Travel Planning", docname)
@@ -157,6 +212,13 @@ def send_hotel_booking_emails(docname):
     requestor_name = frappe.db.get_value("Employee", doc.travel_requestor, "employee_name")
 
     for row in doc.travel_itinerary:
+        # skip rows that already got this email
+        if row.get("hotel_booking_email_sent"):
+            continue
+
+        if not row.get("custom_contact_email"):
+            continue
+
         attachments = [
             {"file_url": row.get(field)}
             for field in hotel_attachment_fields
@@ -165,8 +227,9 @@ def send_hotel_booking_emails(docname):
 
         # Build travel preferences block (only if the field exists on the row)
         preferences_html = _build_preferences_html(row)
+        payment_terms_html = _build_payment_terms_html(row)
 
-        # ── Email to Employee 
+        # ── Email to Employee
         if row.custom_contact_email:
             frappe.sendmail(
                 recipients=[row.custom_contact_email],
@@ -180,6 +243,8 @@ def send_hotel_booking_emails(docname):
                     <b>Travel Planning:</b> {travel_planning_link}<br>
                     <b>Employee:</b> {row.employee_name}<br><br>
 
+                    {payment_terms_html}
+
                     {preferences_html}
 
                     Regards,<br>
@@ -189,6 +254,8 @@ def send_hotel_booking_emails(docname):
                 reference_doctype=doc.doctype,
                 reference_name=doc.name
             )
+            
+            row.db_set("hotel_booking_email_sent", 1)
 
         # ── Email to Requestor 
         # if doc.custom_requestor_contact_email:
@@ -214,6 +281,60 @@ def send_hotel_booking_emails(docname):
         #         reference_doctype=doc.doctype,
         #         reference_name=doc.name
         #     )
+
+    # Additional hotel segments (Travel Hotel Booking) — one email per segment,
+    # mirroring the primary itinerary row's email above.
+    segment_preference_fields = [
+        "custom_laundry_facility", "custom_laundry_facility_remarks",
+        "custom_discount_on_meal", "custom_meal_discount_remarks",
+        "custom_airport_transport", "custom_airport_transport_remarks",
+        "custom_break_fast", "custom_break_fast_remarks",
+        "custom_wifi", "custom_wifi_remarks",
+    ]
+    for segment in frappe.get_all(
+        "Travel Hotel Booking",
+        filters={"travel_planning": docname},
+        fields=["name", "employee", "contact_email", "custom_taxi_bill",
+                "custom_payment_terms_for_hotel_booking"] + segment_preference_fields,
+    ):
+        if not segment.contact_email:
+            continue
+
+        employee_name = frappe.db.get_value("Employee", segment.employee, "employee_name") or segment.employee
+        attachments = [{"file_url": segment.custom_taxi_bill}] if segment.custom_taxi_bill else []
+        segment_preferences_html = _build_preferences_html(segment)
+        segment_payment_terms_html = _build_payment_terms_html(segment)
+
+        frappe.sendmail(
+            recipients=[segment.contact_email],
+            subject=f"{doc.name}: Hotel has been booked for {employee_name}",
+            message=f"""
+                Hello {employee_name},<br><br>
+
+                Your hotel has been booked.
+                Please find the hotel voucher attachments below.<br><br>
+
+                <b>Travel Planning:</b> {travel_planning_link}<br>
+                <b>Employee:</b> {employee_name}<br><br>
+
+                {segment_payment_terms_html}
+
+                {segment_preferences_html}
+
+                Regards,<br>
+                <b>Travel Team</b>
+            """,
+            attachments=attachments,
+            reference_doctype=doc.doctype,
+            reference_name=doc.name
+        )
+
+
+def _build_payment_terms_html(row):
+    payment_terms = row.get("custom_payment_terms_for_hotel_booking")
+    if not payment_terms:
+        return ""
+    return f"<b>Payment Terms for Hotel Booking:</b> {payment_terms}<br><br>"
 
 
 def _build_preferences_html(row):
@@ -829,6 +950,27 @@ def make_timesheet(source_name, target_doc=None):
 
     return timesheet
 
+import frappe
+from frappe.utils import today
+
+@frappe.whitelist()
+def make_employee_advance(source_name, target_doc=None):
+    travel = frappe.get_doc("Travel Planning", source_name)
+
+    employee_advance = frappe.new_doc("Employee Advance")
+
+    if travel.travel_itinerary:
+        row = travel.travel_itinerary[0]
+
+        employee_advance.employee = row.custom_employee
+        employee_advance.employee_name = row.employee_name
+
+    employee_advance.posting_date = today()
+    employee_advance.custom_employee_advance_type = "Travel Allowance"
+    employee_advance.custom_country = travel.custom_country
+    employee_advance.custom_travel_planning = travel.name
+
+    return employee_advance
 
 @frappe.whitelist()
 def get_flight_segments(travel_planning):
@@ -844,6 +986,8 @@ def get_flight_segments(travel_planning):
             "segment_no",
             "custom_onward_travel_date",
             "custom_return_travel_date",
+            "custom_return_travel_from",
+            "custom_return_travel_to",
             "custom_flight_booking_status",
             "custom_total_flight_cost_as_per_invoice",
         ],
@@ -887,6 +1031,7 @@ def get_taxi_segments(travel_planning):
             "segment_no",
             "custom_taxi_type",
             "custom_driver_name",
+            "custom_taxi_vendor",
             "taxi_coast",
         ],
         order_by="employee, segment_no",

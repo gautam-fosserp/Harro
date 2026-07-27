@@ -14,13 +14,17 @@ _QTY_PREFIX_RE = re.compile(r"^-?\d+(\.\d+)?")
 def execute(filters=None):
 	filters = filters or {}
 
-	# This report always shows outward removals - it reuses Import
-	# Receipt's outward Stock Ledger logic (Delivery Note removals + Stock
-	# Entry "Send to Subcontractor", with source-document/batch tracing)
-	# but keeps this report's own column layout instead of Import
-	# Receipt's outward columns.
-	columns = get_outward_columns()
-	data = get_outward_data(filters)
+	# "Show Outward" reuses Import Receipt's outward Stock Ledger logic
+	# (Delivery Note removals + Stock Entry "Send to Subcontractor", with
+	# source-document/batch tracing) but keeps this report's own column
+	# layout instead of Import Receipt's outward columns.
+	if filters.get("show_outward"):
+		columns = get_outward_columns()
+		data = get_outward_data(filters)
+		return columns, data
+
+	columns = get_columns()
+	data = get_data(filters)
 	return columns, data
 
 
@@ -32,6 +36,7 @@ def get_outward_columns():
 		{"label": _("Rate in INR"), "fieldname": "rate_inr", "fieldtype": "Currency", "options": "inr_currency", "width": 130},
 		{"label": _("Rate in EUR"), "fieldname": "rate_eur", "fieldtype": "Currency", "options": "eur_currency", "width": 130},
 		{"label": _("Exchange Rate"), "fieldname": "conversion_rate", "fieldtype": "Float", "width": 120},
+		{"label": _("Value"), "fieldname": "assessable_value", "fieldtype": "Data", "width": 130},
 		{"label": _("Date of Removal"), "fieldname": "removal_date", "fieldtype": "Data", "width": 160},
 		{"label": _("From Warehouse"), "fieldname": "from_warehouse", "fieldtype": "Link", "options": "Warehouse", "width": 180},
 		{"label": _("To Warehouse"), "fieldname": "to_warehouse", "fieldtype": "Link", "options": "Warehouse", "width": 180},
@@ -295,7 +300,8 @@ def _resolve_po_and_material_request(inward_reference_doctype, inward_reference_
 
 def get_outward_data(filters):
 	# Import Receipt's get_data() branches on show_outward internally; this
-	# report has no such checkbox and always wants the outward branch.
+	# code path always wants the outward branch regardless of the caller's
+	# own show_outward filter value.
 	filters = dict(filters or {})
 	filters["show_outward"] = 1
 
@@ -303,6 +309,7 @@ def get_outward_data(filters):
 	if not raw_rows:
 		return []
 
+	only_stock_items = filters.get("only_stock_items")
 	is_stock_item_cache = {}
 
 	# Merge rows for the same item removed via multiple batches within the
@@ -316,9 +323,7 @@ def get_outward_data(filters):
 
 		item_code = row.get("item_code", "")
 
-		# Always restrict to stock items - non-stock items don't carry
-		# meaningful outward removal data for this report.
-		if item_code:
+		if only_stock_items and item_code:
 			if item_code not in is_stock_item_cache:
 				is_stock_item_cache[item_code] = frappe.db.get_value("Item", item_code, "is_stock_item")
 			if not is_stock_item_cache[item_code]:
@@ -395,6 +400,8 @@ def get_outward_data(filters):
 			if not supplier:
 				supplier = se_vender_name
 
+		assessable_value = row.get("assessable_value", "")
+
 		removal_date_raw = str(row.get("removal_date", row.get("receipt_date_time", "")) or "")
 		# Show date only, no time (e.g. "31-03-2026 12:01" -> "31-03-2026").
 		removal_date = removal_date_raw.split(" ")[0] if removal_date_raw else ""
@@ -408,6 +415,7 @@ def get_outward_data(filters):
 			"conversion_rate": conversion_rate,
 			"inr_currency": "INR",
 			"eur_currency": "EUR",
+			"assessable_value": assessable_value,
 			"removal_date": removal_date,
 			"supplier": supplier,
 			"from_warehouse": from_warehouse,
@@ -431,3 +439,112 @@ def get_outward_data(filters):
 	return [merged[key] for key in order]
 
 
+def get_columns():
+	return [
+		{"label": _("PO Name"), "fieldname": "purchase_order", "fieldtype": "Link", "options": "Purchase Order", "width": 160},
+		{"label": _("PO Date"), "fieldname": "po_date", "fieldtype": "Date", "width": 110},
+		{"label": _("Purchase Receipt"), "fieldname": "purchase_receipt", "fieldtype": "Link", "options": "Purchase Receipt", "width": 160},
+		{"label": _("Supplier"), "fieldname": "supplier", "fieldtype": "Link", "options": "Supplier", "width": 220},
+		{"label": _("Supplier Invoice No"), "fieldname": "supplier_invoice_no", "fieldtype": "Data", "width": 160},
+		{"label": _("Supplier Invoice Date"), "fieldname": "supplier_invoice_date", "fieldtype": "Date", "width": 150},
+		{"label": _("Bill of Entry No"), "fieldname": "bill_of_entry_no", "fieldtype": "Data", "width": 160},
+		{"label": _("Bill of Entry Date"), "fieldname": "bill_of_entry_date", "fieldtype": "Date", "width": 150},
+		{"label": _("Material Request"), "fieldname": "material_request", "fieldtype": "Link", "options": "Material Request", "width": 160},
+		{"label": _("Item Code"), "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": 140},
+		{"label": _("Item Name"), "fieldname": "item_name", "fieldtype": "Data", "width": 200},
+		{"label": _("Qty"), "fieldname": "qty", "fieldtype": "Float", "width": 100},
+		{"label": _("Rate in INR"), "fieldname": "rate_inr", "fieldtype": "Currency", "options": "inr_currency", "width": 130},
+		{"label": _("Rate in EUR"), "fieldname": "rate_eur", "fieldtype": "Currency", "options": "eur_currency", "width": 130},
+		{"label": _("Exchange Rate"), "fieldname": "conversion_rate", "fieldtype": "Float", "width": 120},
+		{"label": _("Amount in INR"), "fieldname": "amount_inr", "fieldtype": "Currency", "options": "inr_currency", "width": 140},
+		{"label": _("Amount in EUR"), "fieldname": "amount_eur", "fieldtype": "Currency", "options": "eur_currency", "width": 140},
+		{"label": _("Warehouse"), "fieldname": "warehouse", "fieldtype": "Link", "options": "Warehouse", "width": 160},
+		{"label": _("Rack"), "fieldname": "rack", "fieldtype": "Link", "options": "Rack", "width": 120},
+		{"label": _("Bin Location"), "fieldname": "bin_location", "fieldtype": "Link", "options": "Bin Location", "width": 140},
+		{"label": _("Project (BA Number)"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 160},
+		{"label": _("Machine No"), "fieldname": "custom_machine_no", "fieldtype": "Data", "width": 140},
+		{"label": _("Machine Description"), "fieldname": "custom_machine_description", "fieldtype": "Data", "width": 220},
+	]
+
+
+def get_conditions(filters):
+	conditions = []
+	values = {}
+
+	if filters.get("company"):
+		conditions.append("pr.company = %(company)s")
+		values["company"] = filters.get("company")
+
+	if filters.get("from_date"):
+		conditions.append("pr.posting_date >= %(from_date)s")
+		values["from_date"] = filters.get("from_date")
+
+	if filters.get("to_date"):
+		conditions.append("pr.posting_date <= %(to_date)s")
+		values["to_date"] = filters.get("to_date")
+
+	if filters.get("purchase_order"):
+		conditions.append("pr_item.purchase_order = %(purchase_order)s")
+		values["purchase_order"] = filters.get("purchase_order")
+
+	if filters.get("purchase_receipt"):
+		conditions.append("pr.name = %(purchase_receipt)s")
+		values["purchase_receipt"] = filters.get("purchase_receipt")
+
+	if filters.get("project"):
+		conditions.append("(pr.project = %(project)s OR po.project = %(project)s)")
+		values["project"] = filters.get("project")
+
+	if filters.get("supplier"):
+		conditions.append("pr.supplier = %(supplier)s")
+		values["supplier"] = filters.get("supplier")
+
+	if filters.get("only_stock_items"):
+		conditions.append("item.is_stock_item = 1")
+
+	condition_str = " AND " + " AND ".join(conditions) if conditions else ""
+	return condition_str, values
+
+
+def get_data(filters):
+	conditions, values = get_conditions(filters)
+
+	query = f"""
+		SELECT
+			pr_item.purchase_order AS purchase_order,
+			po.transaction_date AS po_date,
+			pr.name AS purchase_receipt,
+			pr.supplier AS supplier,
+			pr.supplier_invoice_no AS supplier_invoice_no,
+			pr.supplier_invoice_date AS supplier_invoice_date,
+			pr.custom_bill_of_entry_no AS bill_of_entry_no,
+			pr.custom_bill_of_entry_date AS bill_of_entry_date,
+			pr.conversion_rate AS conversion_rate,
+			COALESCE(pr_item.material_request, po_item.material_request) AS material_request,
+			pr_item.item_code AS item_code,
+			pr_item.item_name AS item_name,
+			pr_item.qty AS qty,
+			pr_item.base_rate AS rate_inr,
+			CASE WHEN pr.currency = 'EUR' THEN pr_item.rate ELSE NULL END AS rate_eur,
+			'INR' AS inr_currency,
+			'EUR' AS eur_currency,
+			pr_item.base_amount AS amount_inr,
+			CASE WHEN pr.currency = 'EUR' THEN pr_item.amount ELSE NULL END AS amount_eur,
+			pr_item.warehouse AS warehouse,
+			pr_item.rack AS rack,
+			pr_item.bin_location AS bin_location,
+			COALESCE(pr.project, po.project) AS project,
+			proj.custom_machine_no AS custom_machine_no,
+			proj.custom_machine_description AS custom_machine_description
+		FROM `tabPurchase Receipt Item` pr_item
+		INNER JOIN `tabPurchase Receipt` pr ON pr.name = pr_item.parent
+		LEFT JOIN `tabPurchase Order` po ON po.name = pr_item.purchase_order
+		LEFT JOIN `tabPurchase Order Item` po_item ON po_item.name = pr_item.purchase_order_item
+		LEFT JOIN `tabProject` proj ON proj.name = COALESCE(pr.project, po.project)
+		LEFT JOIN `tabItem` item ON item.name = pr_item.item_code
+		WHERE pr.docstatus = 1
+		{conditions}
+		ORDER BY pr.posting_date DESC, pr.name, pr_item.idx
+	"""
+
+	return frappe.db.sql(query, values, as_dict=True)

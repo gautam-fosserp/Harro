@@ -3,10 +3,12 @@ import json
 from frappe.utils import now, get_datetime, get_link_to_form, getdate, date_diff
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import set_status
+from frappe import _
 
 
 
 def validate(self, method=None):
+    validate_parent_task_dates(self)
     if not self.custom_actual_progress:
         self.custom_actual_progress = "#FFC067"
     if not self.is_new():
@@ -36,6 +38,29 @@ def after_insert(self, method):
     }):
         frappe.db.set_value("Task", self.name, "is_milestone", 1)
         
+def validate_parent_task_dates(self):
+    if not self.parent_task:
+        return
+    
+    parent = frappe.db.get_value(
+        "Task", self.parent_task, ["exp_start_date", "exp_end_date"], as_dict=True
+    )
+    if not parent:
+        return
+    
+    if parent.exp_start_date and self.exp_start_date and getdate(self.exp_start_date) < getdate(parent.exp_start_date):
+        frappe.throw(
+            _("Expected Start Date cannot be before the parent task's Expected Start Date ({0})").format(
+                frappe.utils.formatdate(parent.exp_start_date)
+            )
+        )
+    
+    if parent.exp_end_date and self.exp_end_date and getdate(self.exp_end_date) > getdate(parent.exp_end_date):
+        frappe.throw(
+            _("Expected End Date cannot be after the parent task's Expected End Date ({0})").format(
+                frappe.utils.formatdate(parent.exp_end_date)
+            )
+        )
 
 
 def update_task_details_of_parent_task(self):
