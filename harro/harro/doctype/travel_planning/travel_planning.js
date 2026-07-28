@@ -207,7 +207,12 @@ const TRAVEL_SEGMENT_TYPES = [
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_flight_segments",
         add_label: __("Add Sector"),
         label_fn: (row) => `${row.custom_onward_travel_date || "—"} → ${row.custom_return_travel_date || "—"}`,
-        meta_fn: (row) => row.custom_flight_booking_status || __("Draft"),
+        // meta_fn: (row) => row.custom_flight_booking_status || __("Draft"),
+        meta_fn: (row) => {
+            const from_to = `${row.custom_return_travel_from || "—"} → ${row.custom_return_travel_to || "—"}`;
+            const status = row.custom_flight_booking_status || __("Draft");
+            return `${from_to} · ${status}`;
+        },
         anchor_field: "custom_flight_details",
         section_label: __("Flight Details"),
 
@@ -244,7 +249,12 @@ const TRAVEL_SEGMENT_TYPES = [
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_hotel_segments",
         add_label: __("Add Sector"),
         label_fn: (row) => `${row.custom_hotel_name || __("Hotel")}`,
-        meta_fn: (row) => `${row.check_in_date || "—"} → ${row.check_out_date || "—"}`,
+        // meta_fn: (row) => `${row.check_in_date || "—"} → ${row.check_out_date || "—"}`,
+        meta_fn: (row) => {
+            const dates = `${row.check_in_date || "—"} → ${row.check_out_date || "—"}`;
+            const status = row.custom_hotel_booking_status || __("Draft");
+            return `${dates} · ${status}`;
+        },
         anchor_field: "custom_section_break_q45fn",
         section_label: __("Hotel Booking"),
         legacy_fields: [
