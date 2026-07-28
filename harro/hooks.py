@@ -68,7 +68,10 @@ doctype_js = {
         "Bank Statement Import": "public/js/bank_statement_import.js",
     }
 
-doctype_list_js = {"Task" : "public/js/task_list.js"}
+doctype_list_js = {
+    "Task" : "public/js/task_list.js",
+    "Purchase Order" : "public/js/purchase_order_list.js"
+}
 doctype_calendar_js = {"Task" : "public/js/task_calender.js"}
 
 # Svg Icons
