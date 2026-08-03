@@ -28,7 +28,8 @@ app_license = "mit"
 app_include_css = "/assets/harro/css/harro.css"
 app_include_js = [
     "/assets/harro/js/frappe/views/gantt/gantt_view.js",
-    "harro.bundle.js"
+    "harro.bundle.js",
+    "/assets/harro/js/timesheet_timer_patch.js"
 ]
 
 # include js, css files in header of web template
@@ -66,9 +67,13 @@ doctype_js = {
         "Travel Request" : "public/js/travel_request.js",
         "Employee Advance" : "public/js/employee_advance.js",
         "Bank Statement Import": "public/js/bank_statement_import.js",
+        "Timesheet": "public/js/timesheet.js"
     }
 
-doctype_list_js = {"Task" : "public/js/task_list.js"}
+doctype_list_js = {
+    "Task" : "public/js/task_list.js",
+    "Purchase Order" : "public/js/purchase_order_list.js"
+}
 doctype_calendar_js = {"Task" : "public/js/task_calender.js"}
 
 # Svg Icons

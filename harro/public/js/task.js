@@ -4,19 +4,16 @@ frappe.ui.form.on("Task", {
         if(frm.doc.working_status != "Work In Progress" && frm.doc.status != "Completed" && frm.doc.working_status != "On Hold"){
             frm.add_custom_button(__("Start Timer"), function(){
                 update_start_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         if(frm.doc.working_status == "Work In Progress"){
             frm.add_custom_button(__("Pause Timer"), function(){
                 update_stop_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         if(frm.doc.working_status == "On Hold"){
             frm.add_custom_button(__("Resume Timer"), function(){
                 update_start_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         frm.trigger("make_dashboard");
@@ -55,22 +52,28 @@ frappe.ui.form.on("Task", {
 		}
 
 		function initialiseTimer() {
-			const interval = setInterval(function () {
+			if (frm.harro_timer_interval) {
+				clearInterval(frm.harro_timer_interval);
+			}
+			frm.harro_timer_interval = setInterval(function () {
 				var current = setCurrentIncrement();
 				updateStopwatch(current);
 			}, 1000);
 		}
 
+		if (frm.harro_timer_interval) {
+			clearInterval(frm.harro_timer_interval);
+			frm.harro_timer_interval = null;
+		}
+
 		frm.dashboard.refresh();
-		const timer = `
-			<div class="stopwatch" style="font-weight:bold;margin:0px 13px 0px 2px;
-				color:#545454;font-size:18px;display:inline-block;vertical-align:text-bottom;>
+		const timer = `<span class="stopwatch task-timer-stopwatch">
 				<span class="hours">00</span>
 				<span class="colon">:</span>
 				<span class="minutes">00</span>
 				<span class="colon">:</span>
 				<span class="seconds">00</span>
-			</div>`;
+			</span>`;
 
 		var section = frm.toolbar.page.add_inner_message(timer);
 
@@ -206,10 +209,12 @@ function update_start_job_log(frm){
                 "fieldtype" : "Link",
                 get_query: function () {
                     return {
-                        query : "harro.harro.docevents.task.get_activity_type",
+                        // query : "harro.harro.docevents.task.get_activity_type",
+                        query: "harro.harro.docevents.task.get_employee_wise_activity",
                         filters: {
-                            custom_unproductive_work : 0,
-                            department : frm.doc.department
+                            employee: frm.doc.custom_employee__assign_to_employee_
+                            // custom_unproductive_work : 0,
+                            // department : frm.doc.department
                         },
                     };
                 },
@@ -256,9 +261,10 @@ function update_start_job_log(frm){
                     arg : arg,
                 },
                 callback:(r)=>{
-                    frm.refresh_field("custom_unproductive_work_timelogs")
-                    frm.reload_doc()
                     d.hide();
+                    frm.reload_doc().then(() => {
+                        frm.trigger("make_dashboard");
+                    });
                 }
             })
         }
@@ -280,7 +286,9 @@ function update_stop_job_log(frm){
             arg: arg,
         },
         callback:(r)=>{
-            frm.reload_doc()
+            frm.reload_doc().then(() => {
+                frm.trigger("make_dashboard");
+            });
         }
     })
 }

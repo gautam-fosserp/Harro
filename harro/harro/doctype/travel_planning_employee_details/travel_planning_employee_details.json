@@ -43,6 +43,7 @@
    "fetch_from": "travel_request.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_list_view": 1,
    "label": "Employee Name"
   },
@@ -134,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-17 22:00:24.492191",
+ "modified": "2026-07-08 09:09:28.788570",
  "modified_by": "Administrator",
  "module": "Harro",
  "name": "Travel Planning Employee Details",
