@@ -80,7 +80,7 @@ def get_data(filters):
 		WHERE 
 			ts.docstatus < 2 {conditions}
 		GROUP BY 
-			ts.employee, tsd.project
+			ts.employee, tsd.project, ts.employee
 		ORDER BY 
 			ts.department, ts.employee, tsd.project
 	""", filters, as_dict=True)
