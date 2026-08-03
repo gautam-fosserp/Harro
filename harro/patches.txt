@@ -31,3 +31,4 @@ harro.patches.set_travel_planning_employee_list_view_fields
 harro.patches.add_employee_name_to_travel_segments
 harro.patches.add_stay_and_taxi_required_toggles
 harro.patches.hide_custom_status_travel_itinerary
+harro.patches.reset_timesheet_detail_permlevel
