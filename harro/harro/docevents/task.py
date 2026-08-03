@@ -156,9 +156,9 @@ def update_stop_task_log(arg, start_new=False):
                 } ,"name")
     if timesheet:
         timesheet_doc = frappe.get_doc("Timesheet", timesheet)
-        # Check if a time log for this task already exists to avoid self-overlap
+        # Check if an open (not yet stopped) time log for this task already exists to avoid self-overlap
         existing_log = next(
-            (tl for tl in timesheet_doc.time_logs if tl.task == args.get("task")),
+            (tl for tl in timesheet_doc.time_logs if tl.task == args.get("task") and not tl.to_time),
             None
         )
         if existing_log:
