@@ -55,22 +55,28 @@ frappe.ui.form.on("Task", {
 		}
 
 		function initialiseTimer() {
-			const interval = setInterval(function () {
+			if (frm.harro_timer_interval) {
+				clearInterval(frm.harro_timer_interval);
+			}
+			frm.harro_timer_interval = setInterval(function () {
 				var current = setCurrentIncrement();
 				updateStopwatch(current);
 			}, 1000);
 		}
 
+		if (frm.harro_timer_interval) {
+			clearInterval(frm.harro_timer_interval);
+			frm.harro_timer_interval = null;
+		}
+
 		frm.dashboard.refresh();
-		const timer = `
-			<div class="stopwatch" style="font-weight:bold;margin:0px 13px 0px 2px;
-				color:#545454;font-size:18px;display:inline-block;vertical-align:text-bottom;>
+		const timer = `<span class="stopwatch task-timer-stopwatch">
 				<span class="hours">00</span>
 				<span class="colon">:</span>
 				<span class="minutes">00</span>
 				<span class="colon">:</span>
 				<span class="seconds">00</span>
-			</div>`;
+			</span>`;
 
 		var section = frm.toolbar.page.add_inner_message(timer);
 
