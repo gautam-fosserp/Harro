@@ -4,19 +4,16 @@ frappe.ui.form.on("Task", {
         if(frm.doc.working_status != "Work In Progress" && frm.doc.status != "Completed" && frm.doc.working_status != "On Hold"){
             frm.add_custom_button(__("Start Timer"), function(){
                 update_start_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         if(frm.doc.working_status == "Work In Progress"){
             frm.add_custom_button(__("Pause Timer"), function(){
                 update_stop_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         if(frm.doc.working_status == "On Hold"){
             frm.add_custom_button(__("Resume Timer"), function(){
                 update_start_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         frm.trigger("make_dashboard");
@@ -64,7 +61,7 @@ frappe.ui.form.on("Task", {
 		frm.dashboard.refresh();
 		const timer = `
 			<div class="stopwatch" style="font-weight:bold;margin:0px 13px 0px 2px;
-				color:#545454;font-size:18px;display:inline-block;vertical-align:text-bottom;>
+				color:#545454;font-size:18px;display:inline-block;vertical-align:text-bottom;">
 				<span class="hours">00</span>
 				<span class="colon">:</span>
 				<span class="minutes">00</span>
@@ -256,9 +253,10 @@ function update_start_job_log(frm){
                     arg : arg,
                 },
                 callback:(r)=>{
-                    frm.refresh_field("custom_unproductive_work_timelogs")
-                    frm.reload_doc()
                     d.hide();
+                    frm.reload_doc().then(() => {
+                        frm.trigger("make_dashboard");
+                    });
                 }
             })
         }
@@ -280,7 +278,9 @@ function update_stop_job_log(frm){
             arg: arg,
         },
         callback:(r)=>{
-            frm.reload_doc()
+            frm.reload_doc().then(() => {
+                frm.trigger("make_dashboard");
+            });
         }
     })
 }
