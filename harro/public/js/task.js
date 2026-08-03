@@ -60,8 +60,8 @@ frappe.ui.form.on("Task", {
 
 		frm.dashboard.refresh();
 		const timer = `
-			<div class="stopwatch" style="font-weight:bold;margin:0px 13px 0px 2px;
-				color:#545454;font-size:18px;display:inline-block;vertical-align:text-bottom;">
+			<div class="stopwatch" style="font-weight:bold;margin:0px 13px 10px 2px;
+				color:#545454;font-size:18px;">
 				<span class="hours">00</span>
 				<span class="colon">:</span>
 				<span class="minutes">00</span>
@@ -69,7 +69,8 @@ frappe.ui.form.on("Task", {
 				<span class="seconds">00</span>
 			</div>`;
 
-		var section = frm.toolbar.page.add_inner_message(timer);
+		frm.dashboard.set_headline_alert(timer);
+		var section = frm.dashboard.wrapper.find(".alert");
 
 		let currentIncrement =  0;
         let started_time = null;
