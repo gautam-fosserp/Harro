@@ -203,10 +203,12 @@ function update_start_job_log(frm){
                 "fieldtype" : "Link",
                 get_query: function () {
                     return {
-                        query : "harro.harro.docevents.task.get_activity_type",
+                        // query : "harro.harro.docevents.task.get_activity_type",
+                        query: "harro.harro.docevents.task.get_employee_wise_activity",
                         filters: {
-                            custom_unproductive_work : 0,
-                            department : frm.doc.department
+                            employee: frm.doc.custom_employee__assign_to_employee_
+                            // custom_unproductive_work : 0,
+                            // department : frm.doc.department
                         },
                     };
                 },
