@@ -14,7 +14,6 @@
   "section_break_jpii",
   "column_break_link",
   "taxi_coast",
-  "custom_taxi_required",
   "custom_driver_contact_number",
   "custom_taxi_type",
   "custom_airport_transfer",
@@ -87,11 +86,6 @@
    "fieldname": "taxi_coast",
    "fieldtype": "Currency",
    "label": "Taxi Coast"
-  },
-  {
-   "fieldname": "custom_taxi_required",
-   "label": "Taxi Required",
-   "fieldtype": "Check"
   },
   {
    "fieldname": "custom_driver_contact_number",

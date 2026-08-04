@@ -366,71 +366,71 @@ def update_department(self):
         self.department = frappe.db.get_value("Employee", self.custom_employee__assign_to_employee_, "department")
     
 
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_activity_type(doctype, txt, searchfield, start, page_len, filters):
-    conditions = []
-    values = {}
+# @frappe.whitelist()
+# @frappe.validate_and_sanitize_search_inputs
+# def get_activity_type(doctype, txt, searchfield, start, page_len, filters):
+#     conditions = []
+#     values = {}
 
-    # Department filter
-    if filters.get("department"):
-        conditions.append("pt.department = %(department)s")
-        values["department"] = filters.get("department")
+#     # Department filter
+#     if filters.get("department"):
+#         conditions.append("pt.department = %(department)s")
+#         values["department"] = filters.get("department")
 
-    # Unproductive work filter
-    if filters.get("custom_unproductive_work") is not None:
-        conditions.append("at.custom_unproductive_work = %(custom_unproductive_work)s")
-        values["custom_unproductive_work"] = filters.get("custom_unproductive_work")
-    else:
-        conditions.append("at.custom_unproductive_work = 0")
+#     # Unproductive work filter
+#     if filters.get("custom_unproductive_work") is not None:
+#         conditions.append("at.custom_unproductive_work = %(custom_unproductive_work)s")
+#         values["custom_unproductive_work"] = filters.get("custom_unproductive_work")
+#     else:
+#         conditions.append("at.custom_unproductive_work = 0")
 
-    # Search text
-    if txt:
-        conditions.append("at.name LIKE %(txt)s")
-        values["txt"] = f"%{txt}%"
+#     # Search text
+#     if txt:
+#         conditions.append("at.name LIKE %(txt)s")
+#         values["txt"] = f"%{txt}%"
 
-    # Employee-based department (only if department not already set)
-    if not values.get("department") and filters.get("employees"):
-        employee = filters.get("employees")
-        if employee:
-            department = frappe.db.get_value(
-                "Employee", employee, "department"
-            )
-            if department:
-                conditions.append("pt.department = %(department)s")
-                values["department"] = department
+#     # Employee-based department (only if department not already set)
+#     if not values.get("department") and filters.get("employees"):
+#         employee = filters.get("employees")
+#         if employee:
+#             department = frappe.db.get_value(
+#                 "Employee", employee, "department"
+#             )
+#             if department:
+#                 conditions.append("pt.department = %(department)s")
+#                 values["department"] = department
 
-    # Job Card Type condition (FIXED LOGIC)
-    if filters.get("custom_job_card_type"):
-        conditions.append(
-            "(at.custom_job_card_type IS NOT NULL OR at.custom_job_card_type != '')"
-        )
-    else:
-        conditions.append(
-            "(at.custom_job_card_type IS NULL OR at.custom_job_card_type = '')"
-        )
+#     # Job Card Type condition (FIXED LOGIC)
+#     if filters.get("custom_job_card_type"):
+#         conditions.append(
+#             "(at.custom_job_card_type IS NOT NULL OR at.custom_job_card_type != '')"
+#         )
+#     else:
+#         conditions.append(
+#             "(at.custom_job_card_type IS NULL OR at.custom_job_card_type = '')"
+#         )
 
-    condition_sql = ""
-    if conditions:
-        condition_sql = " AND " + " AND ".join(conditions)
+#     condition_sql = ""
+#     if conditions:
+#         condition_sql = " AND " + " AND ".join(conditions)
 
-    data = frappe.db.sql(
-        f"""
-        SELECT at.name
-        FROM `tabActivity Type` at
-        LEFT JOIN `tabParent Activity` pt
-            ON pt.name = at.parent_activity_type
-        WHERE 1=1
-        {condition_sql}
-        LIMIT %(start)s, %(page_len)s
-        """,
-        {
-            **values,
-            "start": start,
-            "page_len": page_len
-        }
-    )
-    return data
+#     data = frappe.db.sql(
+#         f"""
+#         SELECT at.name
+#         FROM `tabActivity Type` at
+#         LEFT JOIN `tabParent Activity` pt
+#             ON pt.name = at.parent_activity_type
+#         WHERE 1=1
+#         {condition_sql}
+#         LIMIT %(start)s, %(page_len)s
+#         """,
+#         {
+#             **values,
+#             "start": start,
+#             "page_len": page_len
+#         }
+#     )
+#     return data
 
 
 def remove_assignment_while_changing(self):
@@ -453,3 +453,49 @@ def remove_assignments(self, doctype, name, assignee, ignore_permissions=False):
         ignore_permissions=ignore_permissions,
     )
     frappe.share.add("Task", self.name, assignee, read=0, write=0, share=0)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_employee_wise_activity(doctype, txt, searchfield, start, page_len, filters):
+    conditions = []
+    values = {
+        "start": start,
+        "page_len": page_len,
+    }
+
+    employee = filters.get("employee")
+    department = None
+
+    if employee:
+        department = frappe.db.get_value(
+            "Employee", employee, "custom_department_for_timesheet"
+        )
+
+    if department:
+        conditions.append("at.custom_department_for_timesheet = %(department)s")
+        values["department"] = department
+    else:
+        # No employee selected, or employee has no department set ->
+        # show nothing rather than leaking activity types from other departments
+        conditions.append("1=0")
+
+    if txt:
+        conditions.append("at.name LIKE %(txt)s")
+        values["txt"] = f"%{txt}%"
+
+    condition_sql = ""
+    if conditions:
+        condition_sql = " AND " + " AND ".join(conditions)
+
+    data = frappe.db.sql(
+        f"""
+        SELECT at.name
+        FROM `tabActivity Type` at
+        WHERE 1=1
+        {condition_sql}
+        LIMIT %(start)s, %(page_len)s
+        """,
+        values,
+    )
+    return data
