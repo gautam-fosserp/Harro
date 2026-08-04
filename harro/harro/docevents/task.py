@@ -181,6 +181,7 @@ def update_stop_task_log(arg, start_new=False):
                 } ,"name")
     if timesheet:
         timesheet_doc = frappe.get_doc("Timesheet", timesheet)
+        timesheet_doc.flags.ignore_permissions = True
         # Check if an open (not yet stopped) time log for this task already exists to avoid self-overlap
         existing_log = next(
             (tl for tl in timesheet_doc.time_logs if tl.task == args.get("task") and not tl.to_time),
@@ -200,7 +201,7 @@ def update_stop_task_log(arg, start_new=False):
         timesheet_doc.flags.ignore_permissions=True
         timesheet_doc.save()
     else:
-        frappe.get_doc({
+        new_timesheet_doc = frappe.get_doc({
             "doctype" : "Timesheet",
             "parent_project" : doc.project,
             "company" : doc.company,
@@ -215,7 +216,9 @@ def update_stop_task_log(arg, start_new=False):
                     "task" : args.get("task")
                 }
             ]
-        }).insert()
+        })
+        new_timesheet_doc.flags.ignore_permissions = True
+        new_timesheet_doc.insert()
     frappe.db.set_value("Task",args.get("task"), "working_status", "On Hold")
     return True
 
