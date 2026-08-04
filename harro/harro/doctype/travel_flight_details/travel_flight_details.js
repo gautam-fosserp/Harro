@@ -5,7 +5,6 @@ frappe.ui.form.on("Travel Flight Details", {
     refresh(frm) {
         frm.__old_onward = frm.doc.custom_onward_travel_date;
         frm.__old_return = frm.doc.custom_return_travel_date;
-        travel_segment_hide_sidebar(frm);
         travel_segment_add_back_button(frm);
     },
     custom_create_purchase_invoice_flight(frm) {
@@ -207,13 +206,6 @@ function prompt_for_comment(frm, field_name, old_value, new_value) {
     });
 
     d.show();
-}
-
-function travel_segment_hide_sidebar(frm) {
-    if (frm.sidebar) {
-        frm.sidebar.sidebar.toggle(false);
-        frm.page.sidebar.addClass("hide-sidebar");
-    }
 }
 
 function travel_segment_add_back_button(frm) {

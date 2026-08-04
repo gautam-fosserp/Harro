@@ -3,7 +3,6 @@
 
 frappe.ui.form.on("Travel Taxi Details", {
     refresh(frm) {
-        travel_segment_hide_sidebar(frm);
         travel_segment_add_back_button(frm);
     },
     custom_create_purchase_invoice(frm) {
@@ -41,13 +40,6 @@ frappe.ui.form.on("Travel Taxi Details", {
         });
     },
 });
-
-function travel_segment_hide_sidebar(frm) {
-    if (frm.sidebar) {
-        frm.sidebar.sidebar.toggle(false);
-        frm.page.sidebar.addClass("hide-sidebar");
-    }
-}
 
 function travel_segment_add_back_button(frm) {
     if (!frm.doc.travel_planning) return;
