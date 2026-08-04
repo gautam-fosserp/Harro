@@ -1,7 +1,38 @@
 import frappe
 from frappe import _
 import json
+from frappe.utils import getdate, get_last_day
 from harro.harro.docevents.project import calculate_productive_working_hours
+
+
+def get_or_create_month_timesheet(employee, project, company, from_time, time_log):
+    log_date = getdate(from_time)
+    month_start = log_date.replace(day=1)
+    month_end = get_last_day(log_date)
+
+    existing = frappe.db.get_value("Timesheet", {
+        "employee": employee,
+        "parent_project": project,
+        "docstatus": 0,
+        "start_date": ["between", [month_start, month_end]]
+    }, "name")
+
+    if existing:
+        timesheet_doc = frappe.get_doc("Timesheet", existing)
+        timesheet_doc.flags.ignore_permissions = True
+        timesheet_doc.append("time_logs", time_log)
+    else:
+        timesheet_doc = frappe.get_doc({
+            "doctype": "Timesheet",
+            "employee": employee,
+            "parent_project": project,
+            "company": company,
+            "start_date": month_start,
+            "time_logs": [time_log]
+        })
+        timesheet_doc.flags.ignore_permissions = True
+
+    return timesheet_doc
 
 
 def validate(self, method):
@@ -64,31 +95,26 @@ def resume_unproductive_log(to_time, job_card):
 
     employees = doc.get("employee") or []
 
-    # If employees exist: create timesheet per employee
+    # If employees exist: create/reuse timesheet per employee
     if employees:
         for emp in employees:
 
-            # Create Timesheet for each employee
-            timesheet_doc = frappe.get_doc({
-                "doctype": "Timesheet",
-                "employee": emp,
-                "parent_project": doc.project,
-                "company": doc.company,
-                "employee" : last_log.employee,
-                "time_logs": [
-                    {
-                        "activity_type": last_log.get("activity_type"),
-                        "from_time": last_log.get("from_time"),
-                        "to_time": last_log.get("to_time"),
-                        "project": doc.project,
-                        "task": last_log.get("task"),
-                        "project": doc.project
-                    }
-                ]
-            })
+            time_log = {
+                "activity_type": last_log.get("activity_type"),
+                "from_time": last_log.get("from_time"),
+                "to_time": last_log.get("to_time"),
+                "project": doc.project,
+                "task": last_log.get("task"),
+                "employee": emp
+            }
+            timesheet_doc = get_or_create_month_timesheet(
+                emp, doc.project, doc.company, last_log.get("from_time"), time_log
+            )
 
-            timesheet_doc.flags.ignore_permissions = True
-            timesheet_doc.insert()
+            if timesheet_doc.is_new():
+                timesheet_doc.insert()
+            else:
+                timesheet_doc.save()
             timesheet_doc.submit()
 
             # Append a new row for each employee with reference
@@ -107,24 +133,22 @@ def resume_unproductive_log(to_time, job_card):
 
     else:
         # No employees → Single timesheet (existing logic)
+        time_log = {
+            "activity_type": last_log.get("activity_type"),
+            "from_time": last_log.get("from_time"),
+            "to_time": last_log.get("to_time"),
+            "project": doc.project,
+            "task": last_log.get("task"),
+            "custom_ba_number": doc.project
+        }
+        timesheet_doc = get_or_create_month_timesheet(
+            last_log.get("employee"), doc.project, doc.company, last_log.get("from_time"), time_log
+        )
 
-        timesheet_doc = frappe.get_doc({
-            "doctype": "Timesheet",
-            "parent_project": doc.project,
-            "company": doc.company,
-            "time_logs": [
-                {
-                    "activity_type": last_log.get("activity_type"),
-                    "from_time": last_log.get("from_time"),
-                    "to_time": last_log.get("to_time"),
-                    "project": doc.project,
-                    "task": last_log.get("task"),
-                    "custom_ba_number": doc.project
-                }
-            ]
-        })
-        timesheet_doc.flags.ignore_permissions = True
-        timesheet_doc.insert()
+        if timesheet_doc.is_new():
+            timesheet_doc.insert()
+        else:
+            timesheet_doc.save()
         timesheet_doc.submit()
 
         last_log.reference = timesheet_doc.name

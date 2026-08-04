@@ -1,6 +1,6 @@
 import frappe
 import json
-from frappe.utils import now, get_datetime, get_link_to_form, getdate, date_diff
+from frappe.utils import now, get_datetime, get_link_to_form, getdate, date_diff, get_last_day
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import set_status
 from frappe import _
@@ -174,10 +174,15 @@ def update_stop_task_log(arg, start_new=False):
     doc.flags.ignore_permissions = True
     doc.save()
 
+    log_date = getdate(row.get("from_time"))
+    month_start = log_date.replace(day=1)
+    month_end = get_last_day(log_date)
+
     timesheet = frappe.db.get_value("Timesheet", {
                     "employee" : doc.custom_employee__assign_to_employee_,
                     "parent_project" : doc.project,
-                    "docstatus" :  0
+                    "docstatus" :  0,
+                    "start_date" : ["between", [month_start, month_end]]
                 } ,"name")
     if timesheet:
         timesheet_doc = frappe.get_doc("Timesheet", timesheet)
@@ -206,6 +211,7 @@ def update_stop_task_log(arg, start_new=False):
             "parent_project" : doc.project,
             "company" : doc.company,
             "employee" : row.get("employee"),
+            "start_date" : month_start,
             "time_logs" : [
                 {
                     "activity_type" : row.get("activity_type"),
