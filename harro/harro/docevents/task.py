@@ -91,7 +91,7 @@ def update_task_details_of_parent_task(self):
                     _assign = eval(task_doc._assign)
                 if row.custom_user and row.custom_user not in _assign:
                     if not check_if_assignment(self, user=row.custom_user, task=row.task):
-                        add_assignment({"doctype": self.doctype, "name": row.task, "assign_to": [row.custom_user]})
+                        add_assignment_as_admin({"doctype": self.doctype, "name": row.task, "assign_to": [row.custom_user]})
                         share_a_task_access(self, task=row.task, user=row.custom_user)
                     task_doc.db_set("custom_assigned_to_responsible_user", row.custom_user, update_modified=False)
                     task_doc.db_set("custom_employee__assign_to_employee_", row.custom_employee, update_modified=False)
@@ -99,14 +99,22 @@ def update_task_details_of_parent_task(self):
                     if row.custom_user and not task_doc.custom_assigned_to_responsible_user or (row.custom_user and row.custom_user != task_doc.custom_assigned_to_responsible_user):
                         task_doc.db_set("custom_assigned_to_responsible_user", row.custom_user, update_modified=False)
                         if not check_if_assignment(self, user=row.custom_user, task=row.task):
-                            add_assignment({"doctype": self.doctype, "name": row.task, "assign_to": [row.custom_user]})
+                            add_assignment_as_admin({"doctype": self.doctype, "name": row.task, "assign_to": [row.custom_user]})
                             share_a_task_access(self, task=row.task, user=row.custom_user)
                     if  row.custom_employee and not task_doc.custom_employee__assign_to_employee_ or (row.custom_employee and row.custom_employee != task_doc.custom_employee__assign_to_employee_):
                         task_doc.db_set("custom_employee__assign_to_employee_", row.custom_employee, update_modified=False)
-    
+
     if self.custom_assigned_to_responsible_user and not check_if_assignment(self):
         add_assignment({"doctype": self.doctype, "name": self.name, "assign_to": [self.custom_assigned_to_responsible_user]})
         share_a_task_access(self)
+
+def add_assignment_as_admin(args):
+    current_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        add_assignment(args)
+    finally:
+        frappe.set_user(current_user)
 
 def share_a_task_access(self, task=None, user=None):
     if not task:
