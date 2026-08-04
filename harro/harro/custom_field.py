@@ -347,6 +347,14 @@ def create_custom_fields_on_migrate():
                 "read_only": 1,
                 "insert_after": "taxi_requester_name",
                 "fetch_from": "taxi_requestor.user_id"
+            },
+            {
+                "fieldname": "taxi_requestor_team_lead",
+                "label": "Taxi Requestor Team Lead",
+                "fieldtype": "Link",
+                "options": "User",
+                "insert_after": "taxi_requester_name",
+                "read_only": 1
             }
         ],
         "Batch" : [
