@@ -20,6 +20,10 @@
   "other_coast",
   "section_break_tfhq",
   "travel_itinerary",
+  "section_break_travel_segments",
+  "flight_segments_html",
+  "hotel_segments_html",
+  "taxi_segments_html",
   "section_break_bifj",
   "travel_plan",
   "flight_planning",
@@ -101,6 +105,30 @@
    "fieldtype": "Table",
    "label": "Travel Itinerary",
    "options": "Travel Planning Employee Details"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_travel_segments",
+   "fieldtype": "Section Break",
+   "label": "Additional Travel Segments"
+  },
+  {
+   "description": "Additional flight bookings beyond each employee's primary itinerary flight.",
+   "fieldname": "flight_segments_html",
+   "fieldtype": "HTML",
+   "label": "Additional Flight Bookings"
+  },
+  {
+   "description": "Additional hotel bookings beyond each employee's primary itinerary hotel.",
+   "fieldname": "hotel_segments_html",
+   "fieldtype": "HTML",
+   "label": "Additional Hotel Bookings"
+  },
+  {
+   "description": "Additional taxi bookings beyond each employee's primary itinerary taxi.",
+   "fieldname": "taxi_segments_html",
+   "fieldtype": "HTML",
+   "label": "Additional Taxi Bookings"
   },
   {
    "collapsible": 1,

@@ -5,3 +5,5 @@
 tags
 node_modules
 __pycache__
+.agents
+harro/public/dist/

@@ -288,17 +288,31 @@ def create_custom_fields_on_migrate():
         ],
         "Travel Planning Employee Details": [
             {
-            "fieldname": "reference_section",
-            "label": "Reference Section",
-            "fieldtype": "Section Break",
-            "insert_after": "custom_taxi_required"
+                "fieldname": "reference_section",
+                "label": "Reference Section",
+                "fieldtype": "Section Break",
+                "insert_after": "custom_taxi_required"
             },
             {
-            "fieldname": "travel_request_itinerary",
-            "label": "Travel Request Itinerary",
-            "fieldtype": "Data",
-            "insert_after": "reference",
-            "hidden" : 1
+                "fieldname": "travel_request_itinerary",
+                "label": "Travel Request Itinerary",
+                "fieldtype": "Data",
+                "insert_after": "reference",
+                "hidden" : 1
+            },
+            {
+                "fieldname": "flight_booking_email_sent",
+                "label": "Flight Booking Email Sent",
+                "fieldtype": "Check",
+                "insert_after": "custom_flight_booking_details",
+                "hidden": 1
+            },
+            {
+                "fieldname": "hotel_booking_email_sent",
+                "label": "Hotel Booking Email Sent",
+                "fieldtype": "Check",
+                "insert_after": "custom_hotel_booking_details",
+                "hidden": 1
             }
         ],
         "Expense Details" : [

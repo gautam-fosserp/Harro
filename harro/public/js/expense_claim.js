@@ -12,6 +12,20 @@ frappe.ui.form.on("Expense Claim", {
                 frappe.model.set_value(e.doctype, e.name, "project", frm.doc.project)
             });
         }
+    },
+    onload: function(frm) {
+        if (frm.is_new() && !frm.doc.employee) {
+            frappe.db.get_value(
+                "Employee",
+                { "user_id": frappe.session.user },
+                ["name"],
+                function(r) {
+                    if (r && r.name) {
+                        frm.set_value("employee", r.name);
+                    }
+                }
+            );
+        }
     }
 })
 

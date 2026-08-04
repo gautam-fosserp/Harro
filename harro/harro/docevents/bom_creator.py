@@ -10,7 +10,7 @@ import csv
 #         )
     
 @frappe.whitelist()
-def extract_bom_item_data(file_path, bom_c):
+def extract_bom_item_data(bom_c, file_path=None):
     doc = frappe.get_doc("BOM Creator", bom_c)
 
     if not file_path:
@@ -40,7 +40,7 @@ def extract_bom_item_data(file_path, bom_c):
         else:
             public_file_path = frappe.get_site_path("public", file_path.lstrip("/"))
 
-        data = []
+        data = None
         for encoding in ('utf-8-sig', 'cp1252', 'latin-1'):
             try:
                 with open(public_file_path, mode='r', encoding=encoding, errors='strict') as file:
@@ -49,6 +49,9 @@ def extract_bom_item_data(file_path, bom_c):
                 break
             except UnicodeDecodeError:
                 continue
+
+        if data is None:
+            frappe.throw("Could not decode the CSV file with any supported encoding (utf-8-sig, cp1252, latin-1).")
 
     else:
         frappe.throw("Unsupported file type. Please upload a .xlsx or .csv file.")
@@ -105,24 +108,24 @@ def create_item(item, row, uom=None, structureclass=None):
     item = str(item).strip() if item is not None else ""
     if not item:
         return
-    Teilegruppe = str(row.get("Commodity Group") or row.get("commodity group") or row.get("Teilegruppe") or row.get("teilegruppe"))
-    custom_teilegruppe = Teilegruppe.replace(".0",'')
+    Teilegruppe = row.get("Commodity Group") or row.get("commodity group") or row.get("Teilegruppe") or row.get("teilegruppe") or ""
+    custom_teilegruppe = str(Teilegruppe).replace(".0",'')
 
-    if item_groups := frappe.db.sql(f"""Select name From `tabItem Group` where  custom_teilegruppe = '{custom_teilegruppe}' """, as_dict=1):
+    if item_groups := frappe.db.sql("""Select name From `tabItem Group` where custom_teilegruppe = %s""", (custom_teilegruppe,), as_dict=1):
         item_group = item_groups[0].get("name")
     else:
         item_group = "All Item Groups"
     if StructureClass := frappe.db.exists("Structure Class Head", {"strukturklasse" : structureclass}):
         structureclass = StructureClass
     else:
-        frappe.get_doc(
+        structureclass = frappe.get_doc(
             {
                 "strukturklasse": structureclass,
                 "structure_class": structureclass,
                 "doctype": "Structure Class Head"
             }
-        ).insert()
-    
+        ).insert().name
+
     item_doc = frappe.get_doc({
                 "doctype" : "Item",
                 "item_code" : item,
@@ -237,25 +240,25 @@ def make_fieldname(label):
     return label.strip().lower().replace(" ", "_") 
     
 def update_correct_item_group_and_other_data(item, row, structureclass=None):
-    Teilegruppe =  str(row.get("Commodity Group") or row.get("commodity group") or row.get("Teilegruppe") or row.get("teilegruppe"))
-    custom_teilegruppe = Teilegruppe.replace(".0",'')
+    Teilegruppe = row.get("Commodity Group") or row.get("commodity group") or row.get("Teilegruppe") or row.get("teilegruppe") or ""
+    custom_teilegruppe = str(Teilegruppe).replace(".0",'')
     existing_item_group = frappe.db.get_value("Item", item, "item_group")
-    if item_groups := frappe.db.sql(f"""Select name From `tabItem Group` where  custom_teilegruppe = '{custom_teilegruppe}' """, as_dict=1):
+    if item_groups := frappe.db.sql("""Select name From `tabItem Group` where custom_teilegruppe = %s""", (custom_teilegruppe,), as_dict=1):
         item_group = item_groups[0].get("name")
         if existing_item_group != item_group:
             frappe.db.set_value("Item", item, "item_group", item_group, update_modified=False)
-    
+
     if StructureClass := frappe.db.exists("Structure Class Head", {"strukturklasse" : structureclass}):
         structureclass = StructureClass
     else:
-        frappe.get_doc(
+        structureclass = frappe.get_doc(
             {
                 "strukturklasse": structureclass,
                 "structure_class": structureclass,
                 "doctype": "Structure Class Head"
             }
-        ).insert()
-    
+        ).insert().name
+
     frappe.db.set_value("Item", item, "custom_structure_class_head", structureclass, update_modified=False)
     
 

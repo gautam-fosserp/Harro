@@ -1,7 +1,6 @@
 [pre_model_sync]
 # Patches added in this section will be executed before doctypes are migrated
 # Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
-harro.patches.fix_purchase_invoice_from_goods_grn
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
@@ -28,3 +27,8 @@ harro.patches.fix_travel_request_link
 harro.patches.add_supplier_fields_to_stock_entry_detail
 harro.patches.update_project_custom_title
 harro.patches.sync_rack_bin_from_purchase_receipt_to_batch
+harro.patches.set_travel_planning_employee_list_view_fields
+harro.patches.add_employee_name_to_travel_segments
+harro.patches.add_stay_and_taxi_required_toggles
+harro.patches.hide_custom_status_travel_itinerary
+harro.patches.reset_timesheet_detail_permlevel

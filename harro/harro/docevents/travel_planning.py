@@ -114,6 +114,29 @@ def calculate_totals(doc, method=None):
 	for child_field, parent_field in field_map.items():
 		doc.set(parent_field, sum((d.get(child_field) or 0) for d in doc.travel_itinerary))
 
+	# Additional travel segments (Travel Flight Details / Travel Hotel Booking / Travel Taxi Details)
+	# are independent DocTypes, not child tables, so they must be queried rather than iterated from doc.get(...).
+	if not doc.is_new():
+		additional_flight_cost = frappe.db.get_value(
+			"Travel Flight Details",
+			{"travel_planning": doc.name},
+			"sum(custom_total_flight_cost_as_per_invoice)",
+		) or 0
+		additional_hotel_cost = frappe.db.get_value(
+			"Travel Hotel Booking",
+			{"travel_planning": doc.name},
+			"sum(custom_total_hotel_charge_as_per_invoice)",
+		) or 0
+		additional_taxi_cost = frappe.db.get_value(
+			"Travel Taxi Details",
+			{"travel_planning": doc.name},
+			"sum(taxi_coast)",
+		) or 0
+
+		doc.total_flight_coast = (doc.total_flight_coast or 0) + additional_flight_cost
+		doc.total_hotel_booking_coast = (doc.total_hotel_booking_coast or 0) + additional_hotel_cost
+		doc.total_taxi_coast = (doc.total_taxi_coast or 0) + additional_taxi_cost
+
 	total_claimable = 0
 	total_unclaimable = 0
 
@@ -141,4 +164,73 @@ def calculate_totals(doc, method=None):
 	# Set parent totals
 	doc.custom_total_claimable_expense = total_claimable
 	doc.custom_total_unclaimable_expense = total_unclaimable
+
+
+# View only logged in user linked employee rows in travelling planning child table(travel iternary)
+VIEW_ALL_ROLES = {
+    "Travel Manager",
+    "Travel User",
+    "Travel Desk Manager",
+    "Accounts Manager",
+    "Accounts User",
+    "System Manager",
+}
+
+def _can_view_all(user=None):
+    user = user or frappe.session.user
+    if user == "Administrator":
+        return True
+    return bool(set(frappe.get_roles(user)) & VIEW_ALL_ROLES)
+
+def _get_linked_employee(user=None):
+    user = user or frappe.session.user
+    return frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+def filter_itinerary_rows_by_employee(doc, method=None):
+    """Show only the logged-in user's own row unless they hold a
+    view-all role."""
+    if _can_view_all():
+        return
+
+    employee = _get_linked_employee()
+    if not employee:
+        doc.travel_itinerary = []
+        return
+
+    doc.travel_itinerary = [
+        row for row in doc.travel_itinerary
+        if row.custom_employee == employee
+    ]
+
+
+def restore_hidden_rows_before_save(doc, method=None):
+	"""Safety net: if this user only ever saw their own row (others were
+    stripped in onload), re-merge the untouched rows from the DB version
+    before save so we don't wipe out other employees' data."""
+
+	if _can_view_all():
+		return
+	if doc.is_new():
+		return
+	db_doc = frappe.get_doc(doc.doctype, doc.name)
+	visible_ids = {row.custom_employee for row in doc.travel_itinerary}
+
+	for row in db_doc.travel_itinerary:
+		if row.custom_employee not in visible_ids:
+			doc.append("travel_itinerary", row.as_dict())
+
+	
+def employee_row_permission_query(user):
+    """Row-level filter for direct queries against the child doctype
+    (Report Builder, frappe.client.get_list, etc.)."""
+    if not user:
+        user = frappe.session.user
+    if _can_view_all(user):
+        return ""
+
+    employee = _get_linked_employee(user)
+    if not employee:
+        return "1=0"
+
+    return f"`tabTravel Planning Employee Details`.custom_employee = {frappe.db.escape(employee)}"
 

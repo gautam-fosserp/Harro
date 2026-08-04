@@ -1,21 +1,19 @@
 frappe.ui.form.on("Task", {
     refresh:function(frm){
+        set_new_task_defaults(frm);
         if(frm.doc.working_status != "Work In Progress" && frm.doc.status != "Completed" && frm.doc.working_status != "On Hold"){
             frm.add_custom_button(__("Start Timer"), function(){
                 update_start_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         if(frm.doc.working_status == "Work In Progress"){
             frm.add_custom_button(__("Pause Timer"), function(){
                 update_stop_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         if(frm.doc.working_status == "On Hold"){
             frm.add_custom_button(__("Resume Timer"), function(){
                 update_start_job_log(frm)
-                frm.trigger("make_dashboard");
             }).addClass("btn-primary");
         }
         frm.trigger("make_dashboard");
@@ -165,6 +163,19 @@ frappe.ui.form.on("Task", {
 })
 
 // 
+function set_new_task_defaults(frm) {
+    let task_docfield = frm.get_docfield("depends_on", "task");
+    if (!task_docfield) return;
+
+    task_docfield.get_route_options_for_new_doc = function(control) {
+        return {
+            "parent_task": frm.doc.name,
+            "project": frm.doc.project
+        };
+    };
+}
+
+// 
 function add_task_progress(frm, completed, total) {
 
 	let percent = total ? Math.round((completed / total) * 100) : 0;
@@ -198,10 +209,12 @@ function update_start_job_log(frm){
                 "fieldtype" : "Link",
                 get_query: function () {
                     return {
-                        query : "harro.harro.docevents.task.get_activity_type",
+                        // query : "harro.harro.docevents.task.get_activity_type",
+                        query: "harro.harro.docevents.task.get_employee_wise_activity",
                         filters: {
-                            custom_unproductive_work : 0,
-                            department : frm.doc.department
+                            employee: frm.doc.custom_employee__assign_to_employee_
+                            // custom_unproductive_work : 0,
+                            // department : frm.doc.department
                         },
                     };
                 },
@@ -248,9 +261,10 @@ function update_start_job_log(frm){
                     arg : arg,
                 },
                 callback:(r)=>{
-                    frm.refresh_field("custom_unproductive_work_timelogs")
-                    frm.reload_doc()
                     d.hide();
+                    frm.reload_doc().then(() => {
+                        frm.trigger("make_dashboard");
+                    });
                 }
             })
         }
@@ -272,7 +286,9 @@ function update_stop_job_log(frm){
             arg: arg,
         },
         callback:(r)=>{
-            frm.reload_doc()
+            frm.reload_doc().then(() => {
+                frm.trigger("make_dashboard");
+            });
         }
     })
 }

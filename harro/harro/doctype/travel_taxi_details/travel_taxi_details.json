@@ -1,0 +1,246 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-07-03 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "travel_planning",
+  "segment_no",
+  "column_break_vfsp",
+  "employee",
+  "column_break_qxlb",
+  "travel_itinerary_row",
+  "section_break_jpii",
+  "column_break_link",
+  "taxi_coast",
+  "custom_driver_contact_number",
+  "custom_taxi_type",
+  "custom_airport_transfer",
+  "custom_daily_transfer",
+  "custom_out_of_india",
+  "custom_taxi_number",
+  "custom_driver_name",
+  "custom_taxi_invoice_attachment",
+  "custom_daily_transfer_taxi_cost",
+  "custom_column_break_d9krg",
+  "custom_taxi_invoice_details",
+  "custom_taxi_invoice_id",
+  "custom_service_item",
+  "custom_taxi_vendor",
+  "custom_create_purchase_invoice",
+  "custom_send_email",
+  "custom_taxi_email_sent"
+ ],
+ "fields": [
+  {
+   "fieldname": "travel_planning",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Travel Planning",
+   "options": "Travel Planning",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "segment_no",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sector No"
+  },
+  {
+   "fieldname": "column_break_vfsp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_qxlb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The specific Travel Itinerary row (Travel Planning Employee Details) this record belongs to. Employee alone is not enough when the same employee has more than one itinerary row.",
+   "fieldname": "travel_itinerary_row",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Travel Itinerary Row",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_jpii",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_link",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "taxi_coast",
+   "fieldtype": "Currency",
+   "label": "Taxi Coast"
+  },
+  {
+   "fieldname": "custom_driver_contact_number",
+   "label": "Driver Contact Number",
+   "fieldtype": "Phone",
+   "depends_on": "eval: doc.custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_taxi_type",
+   "label": "Taxi Type",
+   "fieldtype": "Data",
+   "depends_on": "eval: doc.custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_airport_transfer",
+   "label": "Pan-India Taxi",
+   "fieldtype": "Check",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_daily_transfer",
+   "label": " Local Taxi",
+   "fieldtype": "Check",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_out_of_india",
+   "label": "Out of India",
+   "fieldtype": "Check",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_taxi_number",
+   "label": "Taxi Number",
+   "fieldtype": "Data",
+   "depends_on": "eval: doc.custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_driver_name",
+   "label": "Driver Name",
+   "fieldtype": "Data",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_taxi_invoice_attachment",
+   "label": "Taxi Invoice Attachment",
+   "fieldtype": "Attach",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_daily_transfer_taxi_cost",
+   "label": "Daily Transfer Taxi Cost",
+   "fieldtype": "Currency",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_column_break_d9krg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "custom_taxi_invoice_details",
+   "label": "Taxi Invoice Details",
+   "fieldtype": "Heading",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_taxi_invoice_id",
+   "label": "Taxi Invoice ID",
+   "fieldtype": "Data",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_service_item",
+   "label": "Service Item",
+   "fieldtype": "Link",
+   "options": "Item",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_taxi_vendor",
+   "label": "Taxi Vendor",
+   "fieldtype": "Link",
+   "options": "Supplier",
+   "depends_on": "custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_create_purchase_invoice",
+   "label": "Create Purchase Invoice",
+   "fieldtype": "Button",
+   "depends_on": "eval: doc.custom_taxi_required"
+  },
+  {
+   "fieldname": "custom_send_email",
+   "label": "Send Email",
+   "fieldtype": "Button",
+   "depends_on": "eval: doc.custom_taxi_required"
+  },
+  {
+   "default": "0",
+   "fieldname": "custom_taxi_email_sent",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Taxi Email Sent",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-08 12:11:00.872381",
+ "modified_by": "Administrator",
+ "module": "Harro",
+ "name": "Travel Taxi Details",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Travel User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Travel Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

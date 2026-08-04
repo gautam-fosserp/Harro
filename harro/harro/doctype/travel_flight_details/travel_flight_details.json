@@ -1,0 +1,579 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-07-03 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "travel_planning",
+  "segment_no",
+  "column_break_auuc",
+  "employee",
+  "column_break_fcwb",
+  "travel_itinerary_row",
+  "contact_email",
+  "section_break_ftlx",
+  "column_break_link",
+  "custom_flight_booking_details",
+  "custom_onward_travel_date",
+  "custom_return_travel_date",
+  "custom_return_travel_from",
+  "custom_return_travel_to",
+  "custom_direct_flight",
+  "custom_connection_flight",
+  "custom_country",
+  "custom_city",
+  "custom_seat_charges",
+  "custom_journey_type",
+  "custom_flight_bill",
+  "custom_return_flight_ticket",
+  "custom_round_trip_ticket",
+  "custom_onward_flight_cost",
+  "custom_return_flight_cost",
+  "custom_round_trip_cost",
+  "custom_flight_booking_status",
+  "custom_booked_by",
+  "custom_section_break_ylki0",
+  "custom_flight_reschedule_details",
+  "custom_revised_travel_date",
+  "custom_revised_return_date",
+  "custom_reason_for_rescheduling",
+  "custom_flight_reschedule_charges",
+  "custom_rescheduled_flight_ticket",
+  "custom_new_fligh_amount",
+  "custom_send_revised_ticket",
+  "custom_send_first_reschedule_request",
+  "custom_rescheduling_invoice",
+  "custom_send_first_rescheduling_invoice",
+  "custom_second_rescheduling",
+  "custom_column_break_q9kcd",
+  "custom_second_flight_rescheduling_details",
+  "custom_second_revised_travel_date",
+  "custom_second_revised_return_date",
+  "custom_reason_for_second_rescheduling",
+  "custom_second_flight_reschedule_charges",
+  "custom_second_rescheduled_flight_ticket",
+  "custom_send_second_reschedule_ticket",
+  "custom_send_second_reschedule_request",
+  "custom_second_rescheduling_invoice",
+  "custom_send_second_rescheduling_invoice",
+  "custom_section_break_v7hpr",
+  "custom_flight_cancellation_details",
+  "custom_reason_for_cancellation",
+  "custom_flight_cancellation_charges",
+  "custom_flight_refund_amount",
+  "custom_credit_note",
+  "custom_send_credit_note",
+  "custom_column_break_gi5iu",
+  "custom_flight_invoice_details",
+  "custom_flight_invoice_id",
+  "custom_service_type",
+  "custom_flight_booking_vendor",
+  "custom_flight_invoice_attachment",
+  "custom_return_flight_invoice_attachment",
+  "custom_round_trip_cost_as_per_invoice",
+  "custom_onward_flight_cost_as_per_invoice",
+  "custom_return_flight_cost_as_per_invoice",
+  "custom_total_flight_cost_as_per_invoice",
+  "custom_flight_payment_status",
+  "custom_paid_amount_flight",
+  "custom_outstanding_amount_flight",
+  "custom_create_purchase_invoice_flight",
+  "custom_send_email_flight",
+  "custom_flight_email_sent"
+ ],
+ "fields": [
+  {
+   "fieldname": "travel_planning",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Travel Planning",
+   "options": "Travel Planning",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "segment_no",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sector No"
+  },
+  {
+   "fieldname": "column_break_auuc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_fcwb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The specific Travel Itinerary row (Travel Planning Employee Details) this record belongs to. Employee alone is not enough when the same employee has more than one itinerary row.",
+   "fieldname": "travel_itinerary_row",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Travel Itinerary Row",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "description": "Contact email of the employee for this segment, carried over from the originating Travel Itinerary row. Used to notify the employee when this segment's booking status changes.",
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Contact Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "section_break_ftlx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_link",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "custom_flight_booking_details",
+   "label": "Flight Booking Details",
+   "fieldtype": "Heading"
+  },
+  {
+   "fieldname": "custom_onward_travel_date",
+   "label": "Onward Travel Date",
+   "fieldtype": "Date"
+  },
+  {
+   "fieldname": "custom_return_travel_date",
+   "label": "Return Travel Date",
+   "fieldtype": "Date"
+  },
+  {
+   "fieldname": "custom_return_travel_from",
+   "label": "Return Travel From",
+   "fieldtype": "Data"
+  },
+  {
+   "fieldname": "custom_return_travel_to",
+   "label": "Return Travel To",
+   "fieldtype": "Data"
+  },
+  {
+   "fieldname": "custom_direct_flight",
+   "label": "Direct Flight",
+   "fieldtype": "Check"
+  },
+  {
+   "fieldname": "custom_connection_flight",
+   "label": "Connection Flight",
+   "fieldtype": "Check"
+  },
+  {
+   "fieldname": "custom_country",
+   "label": "Country",
+   "fieldtype": "Link",
+   "options": "Country",
+   "depends_on": "eval:doc.custom_connection_flight"
+  },
+  {
+   "fieldname": "custom_city",
+   "label": "City",
+   "fieldtype": "Data",
+   "depends_on": "eval:doc.custom_connection_flight"
+  },
+  {
+   "fieldname": "custom_seat_charges",
+   "label": "Seat Charges",
+   "fieldtype": "Currency",
+   "description": "Employee seat charges <1 000 INR and less than 2000, and International less than < 50000."
+  },
+  {
+   "fieldname": "custom_journey_type",
+   "label": "Journey Type",
+   "fieldtype": "Select",
+   "options": "\nRound Trip\nOnward & Return Trip"
+  },
+  {
+   "fieldname": "custom_flight_bill",
+   "label": "Onward Flight Ticket",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_return_flight_ticket",
+   "label": "Return Flight Ticket",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_round_trip_ticket",
+   "label": "Round Trip Ticket",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_journey_type == \"Round Trip\""
+  },
+  {
+   "fieldname": "custom_onward_flight_cost",
+   "label": "Onward Flight cost",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_return_flight_cost",
+   "label": "Return Flight Cost",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_round_trip_cost",
+   "label": "Round Trip Cost",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_journey_type == \"Round Trip\""
+  },
+  {
+   "fieldname": "custom_flight_booking_status",
+   "label": "Flight Booking Status",
+   "fieldtype": "Select",
+   "options": "\nIn progress\nBooked\nCancelled\nRescheduled\nCancelled and Booking\nRescheduled and Cancelled\n"
+  },
+  {
+   "fieldname": "custom_booked_by",
+   "label": "Flight Booked By",
+   "fieldtype": "Link",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "custom_section_break_ylki0",
+   "fieldtype": "Section Break",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_flight_reschedule_details",
+   "label": "First Flight Reschedule Details",
+   "fieldtype": "Heading",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_revised_travel_date",
+   "label": "First Revised  Onward Travel Date",
+   "fieldtype": "Date",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_revised_return_date",
+   "label": "First Revised Return Date",
+   "fieldtype": "Date",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_reason_for_rescheduling",
+   "label": "Reason for first Rescheduling",
+   "fieldtype": "Small Text",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_flight_reschedule_charges",
+   "label": "First Flight Reschedule Charges",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_rescheduled_flight_ticket",
+   "label": "First Rescheduled Flight Ticket",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_new_fligh_amount",
+   "label": "New Fligh Amount",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_send_revised_ticket",
+   "label": "Send Revised Ticket",
+   "fieldtype": "Button",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_send_first_reschedule_request",
+   "label": "Send First Reschedule Request",
+   "fieldtype": "Button",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_rescheduling_invoice",
+   "label": "First Rescheduling Invoice",
+   "fieldtype": "Attach Image",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_send_first_rescheduling_invoice",
+   "label": "Send First Rescheduling Invoice",
+   "fieldtype": "Button",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_second_rescheduling",
+   "label": "Second Rescheduling",
+   "fieldtype": "Check",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Rescheduled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_column_break_q9kcd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "custom_second_flight_rescheduling_details",
+   "label": "Second Flight Rescheduling Details",
+   "fieldtype": "Heading",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_second_revised_travel_date",
+   "label": "Second Revised Onward Travel Date",
+   "fieldtype": "Date",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_second_revised_return_date",
+   "label": "Second Revised Return Date",
+   "fieldtype": "Date",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_reason_for_second_rescheduling",
+   "label": "Reason for Second Rescheduling",
+   "fieldtype": "Small Text",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_second_flight_reschedule_charges",
+   "label": "Second Flight Reschedule Charges",
+   "fieldtype": "Currency",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_second_rescheduled_flight_ticket",
+   "label": "Second Rescheduled Flight Ticket",
+   "fieldtype": "Attach",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_send_second_reschedule_ticket",
+   "label": "Send Second Reschedule Ticket",
+   "fieldtype": "Button",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_send_second_reschedule_request",
+   "label": "Send Second Reschedule Request",
+   "fieldtype": "Button",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_second_rescheduling_invoice",
+   "label": "Second Rescheduling Invoice",
+   "fieldtype": "Attach",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_send_second_rescheduling_invoice",
+   "label": "Send Second Rescheduling Invoice",
+   "fieldtype": "Button",
+   "depends_on": "eval:(doc.custom_flight_booking_status == \"Rescheduled\" && doc.custom_second_rescheduling == 1) || (doc.custom_flight_booking_status == \"Rescheduled and Cancelled\" && doc.custom_second_rescheduling == 1)"
+  },
+  {
+   "fieldname": "custom_section_break_v7hpr",
+   "fieldtype": "Section Break",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Cancelled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_flight_cancellation_details",
+   "label": "Flight Cancellation Details",
+   "fieldtype": "Heading",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Cancelled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_reason_for_cancellation",
+   "label": "Reason for Cancellation",
+   "fieldtype": "Small Text",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Cancelled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_flight_cancellation_charges",
+   "label": "Flight Cancellation Charges",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Cancelled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_flight_refund_amount",
+   "label": "Flight Refund Amount",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Cancelled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_credit_note",
+   "label": "Credit Note",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_flight_booking_status == \"Cancelled\" || doc.custom_flight_booking_status == \"Rescheduled and Cancelled\""
+  },
+  {
+   "fieldname": "custom_send_credit_note",
+   "label": "Send Credit Note",
+   "fieldtype": "Button"
+  },
+  {
+   "fieldname": "custom_column_break_gi5iu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "custom_flight_invoice_details",
+   "label": "Flight Invoice Details",
+   "fieldtype": "Heading"
+  },
+  {
+   "fieldname": "custom_flight_invoice_id",
+   "label": "Flight Invoice ID",
+   "fieldtype": "Data"
+  },
+  {
+   "fieldname": "custom_service_type",
+   "label": "Service Type",
+   "fieldtype": "Link",
+   "options": "Item",
+   "default": "Flight Booking"
+  },
+  {
+   "fieldname": "custom_flight_booking_vendor",
+   "label": "Flight Booking Vendor",
+   "fieldtype": "Link",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "custom_flight_invoice_attachment",
+   "label": "Onward Flight Invoice Attachment",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_return_flight_invoice_attachment",
+   "label": "Return Flight Invoice Attachment",
+   "fieldtype": "Attach",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_round_trip_cost_as_per_invoice",
+   "label": "Round Trip Cost (As per Invoice)",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_journey_type == \"Round Trip\""
+  },
+  {
+   "fieldname": "custom_onward_flight_cost_as_per_invoice",
+   "label": "Onward Flight Cost (As per Invoice)",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_return_flight_cost_as_per_invoice",
+   "label": "Return Flight Cost (As per invoice)",
+   "fieldtype": "Currency",
+   "depends_on": "eval:doc.custom_journey_type == \"Onward & Return Trip\""
+  },
+  {
+   "fieldname": "custom_total_flight_cost_as_per_invoice",
+   "label": "Total Flight Cost (As per Invoice)",
+   "fieldtype": "Currency",
+   "description": "Onward flight cost (As per invoice) + Return flight cost (As per invoice) + Baggage cost + Seat cost + Round Trip cost (As per invoice)\n"
+  },
+  {
+   "fieldname": "custom_flight_payment_status",
+   "label": "Flight Payment Status",
+   "fieldtype": "Select",
+   "options": "\nPaid\nUnpaid"
+  },
+  {
+   "fieldname": "custom_paid_amount_flight",
+   "label": "Paid Amount (Flight)",
+   "fieldtype": "Currency"
+  },
+  {
+   "fieldname": "custom_outstanding_amount_flight",
+   "label": "Outstanding Amount (Flight)",
+   "fieldtype": "Currency"
+  },
+  {
+   "fieldname": "custom_create_purchase_invoice_flight",
+   "label": "Create Purchase Invoice Flight",
+   "fieldtype": "Button"
+  },
+  {
+   "fieldname": "custom_send_email_flight",
+   "label": "Send Email Flight",
+   "fieldtype": "Button"
+  },
+  {
+   "fieldname": "custom_flight_email_sent",
+   "label": "Flight Email Sent",
+   "fieldtype": "Check",
+   "read_only": 1,
+   "hidden": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-08 12:10:36.813537",
+ "modified_by": "Administrator",
+ "module": "Harro",
+ "name": "Travel Flight Details",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Travel User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Travel Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

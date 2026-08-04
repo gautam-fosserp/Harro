@@ -3,10 +3,12 @@ import json
 from frappe.utils import now, get_datetime, get_link_to_form, getdate, date_diff
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import set_status
+from frappe import _
 
 
 
 def validate(self, method=None):
+    validate_parent_task_dates(self)
     if not self.custom_actual_progress:
         self.custom_actual_progress = "#FFC067"
     if not self.is_new():
@@ -36,6 +38,29 @@ def after_insert(self, method):
     }):
         frappe.db.set_value("Task", self.name, "is_milestone", 1)
         
+def validate_parent_task_dates(self):
+    if not self.parent_task:
+        return
+    
+    parent = frappe.db.get_value(
+        "Task", self.parent_task, ["exp_start_date", "exp_end_date"], as_dict=True
+    )
+    if not parent:
+        return
+    
+    if parent.exp_start_date and self.exp_start_date and getdate(self.exp_start_date) < getdate(parent.exp_start_date):
+        frappe.throw(
+            _("Expected Start Date cannot be before the parent task's Expected Start Date ({0})").format(
+                frappe.utils.formatdate(parent.exp_start_date)
+            )
+        )
+    
+    if parent.exp_end_date and self.exp_end_date and getdate(self.exp_end_date) > getdate(parent.exp_end_date):
+        frappe.throw(
+            _("Expected End Date cannot be after the parent task's Expected End Date ({0})").format(
+                frappe.utils.formatdate(parent.exp_end_date)
+            )
+        )
 
 
 def update_task_details_of_parent_task(self):
@@ -341,71 +366,71 @@ def update_department(self):
         self.department = frappe.db.get_value("Employee", self.custom_employee__assign_to_employee_, "department")
     
 
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_activity_type(doctype, txt, searchfield, start, page_len, filters):
-    conditions = []
-    values = {}
+# @frappe.whitelist()
+# @frappe.validate_and_sanitize_search_inputs
+# def get_activity_type(doctype, txt, searchfield, start, page_len, filters):
+#     conditions = []
+#     values = {}
 
-    # Department filter
-    if filters.get("department"):
-        conditions.append("pt.department = %(department)s")
-        values["department"] = filters.get("department")
+#     # Department filter
+#     if filters.get("department"):
+#         conditions.append("pt.department = %(department)s")
+#         values["department"] = filters.get("department")
 
-    # Unproductive work filter
-    if filters.get("custom_unproductive_work") is not None:
-        conditions.append("at.custom_unproductive_work = %(custom_unproductive_work)s")
-        values["custom_unproductive_work"] = filters.get("custom_unproductive_work")
-    else:
-        conditions.append("at.custom_unproductive_work = 0")
+#     # Unproductive work filter
+#     if filters.get("custom_unproductive_work") is not None:
+#         conditions.append("at.custom_unproductive_work = %(custom_unproductive_work)s")
+#         values["custom_unproductive_work"] = filters.get("custom_unproductive_work")
+#     else:
+#         conditions.append("at.custom_unproductive_work = 0")
 
-    # Search text
-    if txt:
-        conditions.append("at.name LIKE %(txt)s")
-        values["txt"] = f"%{txt}%"
+#     # Search text
+#     if txt:
+#         conditions.append("at.name LIKE %(txt)s")
+#         values["txt"] = f"%{txt}%"
 
-    # Employee-based department (only if department not already set)
-    if not values.get("department") and filters.get("employees"):
-        employee = filters.get("employees")
-        if employee:
-            department = frappe.db.get_value(
-                "Employee", employee, "department"
-            )
-            if department:
-                conditions.append("pt.department = %(department)s")
-                values["department"] = department
+#     # Employee-based department (only if department not already set)
+#     if not values.get("department") and filters.get("employees"):
+#         employee = filters.get("employees")
+#         if employee:
+#             department = frappe.db.get_value(
+#                 "Employee", employee, "department"
+#             )
+#             if department:
+#                 conditions.append("pt.department = %(department)s")
+#                 values["department"] = department
 
-    # Job Card Type condition (FIXED LOGIC)
-    if filters.get("custom_job_card_type"):
-        conditions.append(
-            "(at.custom_job_card_type IS NOT NULL OR at.custom_job_card_type != '')"
-        )
-    else:
-        conditions.append(
-            "(at.custom_job_card_type IS NULL OR at.custom_job_card_type = '')"
-        )
+#     # Job Card Type condition (FIXED LOGIC)
+#     if filters.get("custom_job_card_type"):
+#         conditions.append(
+#             "(at.custom_job_card_type IS NOT NULL OR at.custom_job_card_type != '')"
+#         )
+#     else:
+#         conditions.append(
+#             "(at.custom_job_card_type IS NULL OR at.custom_job_card_type = '')"
+#         )
 
-    condition_sql = ""
-    if conditions:
-        condition_sql = " AND " + " AND ".join(conditions)
+#     condition_sql = ""
+#     if conditions:
+#         condition_sql = " AND " + " AND ".join(conditions)
 
-    data = frappe.db.sql(
-        f"""
-        SELECT at.name
-        FROM `tabActivity Type` at
-        LEFT JOIN `tabParent Activity` pt
-            ON pt.name = at.parent_activity_type
-        WHERE 1=1
-        {condition_sql}
-        LIMIT %(start)s, %(page_len)s
-        """,
-        {
-            **values,
-            "start": start,
-            "page_len": page_len
-        }
-    )
-    return data
+#     data = frappe.db.sql(
+#         f"""
+#         SELECT at.name
+#         FROM `tabActivity Type` at
+#         LEFT JOIN `tabParent Activity` pt
+#             ON pt.name = at.parent_activity_type
+#         WHERE 1=1
+#         {condition_sql}
+#         LIMIT %(start)s, %(page_len)s
+#         """,
+#         {
+#             **values,
+#             "start": start,
+#             "page_len": page_len
+#         }
+#     )
+#     return data
 
 
 def remove_assignment_while_changing(self):
@@ -428,3 +453,49 @@ def remove_assignments(self, doctype, name, assignee, ignore_permissions=False):
         ignore_permissions=ignore_permissions,
     )
     frappe.share.add("Task", self.name, assignee, read=0, write=0, share=0)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_employee_wise_activity(doctype, txt, searchfield, start, page_len, filters):
+    conditions = []
+    values = {
+        "start": start,
+        "page_len": page_len,
+    }
+
+    employee = filters.get("employee")
+    department = None
+
+    if employee:
+        department = frappe.db.get_value(
+            "Employee", employee, "custom_department_for_timesheet"
+        )
+
+    if department:
+        conditions.append("at.custom_department_for_timesheet = %(department)s")
+        values["department"] = department
+    else:
+        # No employee selected, or employee has no department set ->
+        # show nothing rather than leaking activity types from other departments
+        conditions.append("1=0")
+
+    if txt:
+        conditions.append("at.name LIKE %(txt)s")
+        values["txt"] = f"%{txt}%"
+
+    condition_sql = ""
+    if conditions:
+        condition_sql = " AND " + " AND ".join(conditions)
+
+    data = frappe.db.sql(
+        f"""
+        SELECT at.name
+        FROM `tabActivity Type` at
+        WHERE 1=1
+        {condition_sql}
+        LIMIT %(start)s, %(page_len)s
+        """,
+        values,
+    )
+    return data
