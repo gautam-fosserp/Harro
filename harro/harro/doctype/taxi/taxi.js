@@ -23,8 +23,36 @@ frappe.ui.form.on("Taxi", {
     },
     custom_toll_tax(frm) {
         calculate_cost(frm);
+    },
+    taxi_requestor: function(frm) {
+        if (frm.doc.taxi_requestor) {
+            frappe.db.get_value(
+                "Employee",
+                frm.doc.taxi_requestor,
+                "reports_to"
+            ).then(r => {
+                if (r.message && r.message.reports_to) {
+                    console.log(r.message);
+                    frappe.db.get_value(
+                        "Employee",
+                        r.message.reports_to,
+                        "user_id"
+                    ).then(res => {
+                        if (res.message && res.message.user_id) {
+                            frm.set_value(
+                                "taxi_requestor_team_lead",
+                                res.message.user_id
+                            );
+                        } else {
+                            frm.set_value("taxi_requestor_team_lead", "");
+                        }
+                    })
+                }
+            })
+        }
     }
 });
+
 
 
 function calculate_cost(frm) {
