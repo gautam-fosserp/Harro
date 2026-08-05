@@ -1176,21 +1176,24 @@ function open_new_segment(frm, segment_type, employee, cdn) {
                 ? Math.max(...existing.map((seg) => seg.segment_no || 0)) + 1
                 : 1;
 
-            const prefill = (itinerary_row && segment_type.prefill_fields)
+            // Start with the prefill from the segment type definition
+            let prefill = (itinerary_row && segment_type.prefill_fields)
                 ? segment_type.prefill_fields(itinerary_row)
                 : {};
 
+            // ---- Flight‑specific logic ----
+            if (segment_type.doctype === "Travel Flight Details") {
+                const travel_type = frm.doc.travel_type;
+                const isMultiSector = travel_type === "Multi-Sector(Domestic)" ||
+                                      travel_type === "Multi-Sector(International)";
 
-            // frappe.route_options = { travel_planning: frm.doc.name };
-            // frappe.new_doc(segment_type.doctype, {
-            //     travel_planning: frm.doc.name,
-            //     employee: employee,
-            //     travel_itinerary_row: cdn,
-            //     segment_no: next_segment_no,
-            //     contact_email: contact_email,
-            // });
+                // Clear prefill ONLY when it IS Multi‑Sector AND this is NOT the first segment
+                if (isMultiSector && next_segment_no > 1) {
+                    prefill = {};
+                }
+            }
+            // -----------------------------
 
-            // Pass all values through route_options
             frappe.route_options = {
                 travel_planning: frm.doc.name,
                 employee: employee,
