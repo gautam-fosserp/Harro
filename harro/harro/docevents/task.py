@@ -9,6 +9,7 @@ from frappe import _
 
 def validate(self, method=None):
     validate_parent_task_dates(self)
+    validate_dependent_task_dates(self)
     if not self.custom_actual_progress:
         self.custom_actual_progress = "#FFC067"
     if not self.is_new():
@@ -63,6 +64,43 @@ def validate_parent_task_dates(self):
         )
 
 
+def validate_dependent_task_dates(self):
+    if self.is_new() or not (self.exp_start_date or self.exp_end_date):
+        return
+
+    depends_on_rows = frappe.get_all(
+        "Task Depends On",
+        filters={"task": self.name, "parenttype": "Task"},
+        fields=["parent"],
+    )
+    if not depends_on_rows:
+        return
+
+    parent_task_names = {row.parent for row in depends_on_rows}
+    for parent_task_name in parent_task_names:
+        parent = frappe.db.get_value(
+            "Task", parent_task_name, ["name", "subject", "exp_start_date", "exp_end_date"], as_dict=True
+        )
+        if not parent:
+            continue
+
+        if parent.exp_start_date and self.exp_start_date and getdate(self.exp_start_date) < getdate(parent.exp_start_date):
+            frappe.throw(
+                _("Expected Start Date cannot be before {0}'s Expected Start Date ({1})").format(
+                    frappe.utils.get_link_to_form("Task", parent.name, label=parent.subject),
+                    frappe.utils.formatdate(parent.exp_start_date)
+                )
+            )
+
+        if parent.exp_end_date and self.exp_end_date and getdate(self.exp_end_date) > getdate(parent.exp_end_date):
+            frappe.throw(
+                _("Expected End Date cannot be after {0}'s Expected End Date ({1})").format(
+                    frappe.utils.get_link_to_form("Task", parent.name, label=parent.subject),
+                    frappe.utils.formatdate(parent.exp_end_date)
+                )
+            )
+
+
 def update_task_details_of_parent_task(self):
     if self.depends_on:
         for row in self.depends_on:
@@ -73,6 +111,20 @@ def update_task_details_of_parent_task(self):
             if row.task:
 
                 task_doc = frappe.get_doc("Task", row.task)
+
+                if row.custom_expected_start_date and self.exp_start_date and getdate(row.custom_expected_start_date) < getdate(self.exp_start_date):
+                    frappe.throw(
+                        _("Row #{0}: Expected Start Date cannot be before this task's Expected Start Date ({1})").format(
+                            row.idx, frappe.utils.formatdate(self.exp_start_date)
+                        )
+                    )
+
+                if row.custom_expected_end_date and self.exp_end_date and getdate(row.custom_expected_end_date) > getdate(self.exp_end_date):
+                    frappe.throw(
+                        _("Row #{0}: Expected End Date cannot be after this task's Expected End Date ({1})").format(
+                            row.idx, frappe.utils.formatdate(self.exp_end_date)
+                        )
+                    )
 
                 # Update only if values are different
                 if row.custom_expected_start_date and task_doc.exp_start_date != row.custom_expected_start_date:
