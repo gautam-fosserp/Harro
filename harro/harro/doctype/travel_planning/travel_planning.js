@@ -216,12 +216,13 @@ const TRAVEL_SEGMENT_TYPES = [
         anchor_field: "custom_flight_details",
         section_label: __("Flight Details"),
 
-        // maps itinerary row fields -> Travel Flight Details fields
         prefill_fields: (itinerary_row) => ({
             custom_onward_travel_date: itinerary_row.custom_onward_travel_date,
+            custom_onward_travel_from: itinerary_row.travel_from,
+            custom_onward_travel_to: itinerary_row.travel_to,
             custom_return_travel_date: itinerary_row.custom_return_travel_date,
-            custom_return_travel_from: itinerary_row.travel_from,
-            custom_return_travel_to: itinerary_row.travel_to,
+            custom_return_travel_from: itinerary_row.custom_return_travel_from,
+            custom_return_travel_to: itinerary_row.custom_return_travel_to,
         }),
 
         legacy_fields: [
