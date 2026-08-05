@@ -209,7 +209,7 @@ def update_stop_task_log(arg, start_new=False):
     else:
         new_timesheet_doc = frappe.get_doc({
             "doctype" : "Timesheet",
-            "parent_project" : doc.project,
+            "parent_project" : project,
             "company" : doc.company,
             "employee" : row.get("employee"),
             "start_date" : month_start,
