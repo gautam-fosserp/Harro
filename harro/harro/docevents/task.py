@@ -147,7 +147,7 @@ def update_time_log(arg):
         "from_time" : args.get("from_time"),
         "activity_type" : args.get('activity_type'),
         "employee" : args.get("employee"),
-        "project" : doc.project,
+        "project" : doc.project or args.get("project"),
         "task" : args.get("task")
     })
     if not doc.custom_employee__assign_to_employee_:
