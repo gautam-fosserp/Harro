@@ -219,7 +219,7 @@ def update_stop_task_log(arg, start_new=False):
                     "from_time" : row.get("from_time"),
                     "to_time" : row.get("to_time"),
                     "employee" : row.get("employee"),
-                    "project" : row.get("project"),
+                    "project" : project,
                     "task" : args.get("task")
                 }
             ]
