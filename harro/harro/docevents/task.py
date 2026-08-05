@@ -166,6 +166,7 @@ def update_stop_task_log(arg, start_new=False):
     doc = frappe.get_doc("Task", args.get("task"))
     row = doc.unproductive_work_timelogs[-1]
     doc.unproductive_work_timelogs[-1].to_time = args.get("to_time")
+    project = doc.project or doc.unproductive_work_timelogs[-1].project
     if not row.get("to_time") or row.get("to_time") == '':
         row.update({
             "to_time" : args.get("to_time")
@@ -180,7 +181,7 @@ def update_stop_task_log(arg, start_new=False):
 
     timesheet = frappe.db.get_value("Timesheet", {
                     "employee" : doc.custom_employee__assign_to_employee_,
-                    "parent_project" : doc.project,
+                    "parent_project" : project ,
                     "docstatus" :  0,
                     "start_date" : ["between", [month_start, month_end]]
                 } ,"name")
@@ -200,7 +201,7 @@ def update_stop_task_log(arg, start_new=False):
                 "from_time" : row.get("from_time"),
                 "to_time" : row.get("to_time"),
                 "employee" : row.get("employee"),
-                "project" : row.get("project"),
+                "project" : project,
                 "task" : args.get("task")
             })
         timesheet_doc.flags.ignore_permissions=True
