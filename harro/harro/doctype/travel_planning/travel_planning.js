@@ -258,6 +258,10 @@ const TRAVEL_SEGMENT_TYPES = [
         },
         anchor_field: "custom_section_break_q45fn",
         section_label: __("Hotel Booking"),
+        prefill_fields: (itinerary_row) => ({
+            check_in_date: itinerary_row.custom_onward_travel_date,
+            check_out_date: itinerary_row.custom_return_travel_date,
+        }),
         legacy_fields: [
             "custom_section_break_q45fn", "custom_hotel_booking_details", "custom_hotel_name", "custom_taxi_bill",
             "custom_hotel_booking_status", "custom_hotel_booked_by", "custom_hotel_cancellation_details",
