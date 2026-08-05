@@ -470,6 +470,17 @@ def remove_assignments(self, doctype, name, assignee, ignore_permissions=False):
     frappe.share.add("Task", self.name, assignee, read=0, write=0, share=0)
 
 
+def get_permission_query_conditions(user):
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return ""
+
+    return f"""(`tabTask`.owner = {frappe.db.escape(user)}
+        OR `tabTask`._assign LIKE {frappe.db.escape('%' + user + '%')})"""
+
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_employee_wise_activity(doctype, txt, searchfield, start, page_len, filters):
