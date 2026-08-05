@@ -159,7 +159,18 @@ frappe.ui.form.on("Task", {
         frappe.model.get_value("Employee", frm.doc.custom_employee__assign_to_employee_, "department", (r)=>{
             frm.set_value("department", r.department)
         })
-    } 
+    }
+})
+
+// Creating a Task from the depends_on grid's "task" link field autosaves this
+// form first (Frappe's built-in "Create New" behavior), which bumps `modified`
+// server-side without updating the client's copy. Reload so the client stays
+// in sync and a later Save doesn't hit "Document has been modified".
+frappe.ui.form.on("Task Depends On", {
+    task(frm, cdt, cdn) {
+        if (frm.doc.__islocal) return;
+        frm.reload_doc();
+    }
 })
 
 // 
