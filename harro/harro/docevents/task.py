@@ -1,5 +1,6 @@
 import frappe
 import json
+from datetime import datetime
 from frappe.utils import now, get_datetime, get_link_to_form, getdate, date_diff, get_last_day
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import set_status
@@ -313,7 +314,11 @@ def update_task_timer():
         current_time = get_datetime()
         diff_hours = (current_time - from_time).total_seconds() / 3600
 
-        if diff_hours >= permissable_hours:
+        shift_end_reached = False
+        if doc.custom_employee__assign_to_employee_:
+            shift_end_reached = has_employee_shift_ended(doc.custom_employee__assign_to_employee_, current_time)
+
+        if diff_hours >= permissable_hours or shift_end_reached:
             arg = {
                 "task" : row.name,
                 "to_time" : now()
@@ -322,6 +327,19 @@ def update_task_timer():
             if doc.custom_employee__assign_to_employee_:
                 send_timer_stopper_notification(doc, permissable_hours)
             frappe.db.commit()
+
+
+def has_employee_shift_ended(employee, current_time):
+    default_shift = frappe.db.get_value("Employee", employee, "default_shift")
+    if not default_shift:
+        return False
+
+    end_time = frappe.db.get_value("Shift Type", default_shift, "end_time")
+    if not end_time:
+        return False
+
+    shift_end_datetime = datetime.combine(current_time.date(), (datetime.min + end_time).time())
+    return current_time >= shift_end_datetime
 
 def send_timer_stopper_notification(doc, permissible_hours):
     employee_name = frappe.db.get_value(
