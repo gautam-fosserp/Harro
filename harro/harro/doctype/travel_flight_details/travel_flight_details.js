@@ -104,6 +104,21 @@ frappe.ui.form.on("Travel Flight Details", {
     },
     custom_send_second_reschedule_request: function(frm) {
         send_reschedule_request(frm, 'second');
+    },
+    custom_seat_charges: function(frm) {
+        calculate_total_flight_cost(frm);
+    },
+    baggage_coast: function(frm) {
+        calculate_total_flight_cost(frm);
+    },
+    custom_onward_flight_cost_as_per_invoice: function(frm) {
+        calculate_total_flight_cost(frm);
+    },
+    custom_return_flight_cost_as_per_invoice: function(frm) {
+        calculate_total_flight_cost(frm);
+    },
+    custom_round_trip_cost_as_per_invoice: function(frm) {
+        calculate_total_flight_cost(frm);
     }
 });
 
@@ -250,4 +265,16 @@ function style_back_button(frm, label) {
     frm.page.inner_toolbar
         .find(`button[data-label="${encodeURIComponent(label)}"]`)
         .addClass("btn-back-to-travel-planning");
+}
+
+function calculate_total_flight_cost(frm) {
+    const onward_flight_cost = row.custom_onward_flight_cost_as_per_invoice || 0;
+    const return_flight_cost = row.custom_return_flight_cost_as_per_invoice || 0;
+    const seat_charge = row.custom_seat_charges || 0;
+    const baggage_cost = row.baggage_coast || 0;
+    const round_trip_cost = row.custom_round_trip_cost_as_per_invoice || 0;
+
+    const total_flight_cost = (onward_flight_cost+return_flight_cost+seat_charge+baggage_cost+round_trip_cost);
+
+    frm.set_value("custom_total_flight_cost_as_per_invoice", total_flight_cost);
 }
