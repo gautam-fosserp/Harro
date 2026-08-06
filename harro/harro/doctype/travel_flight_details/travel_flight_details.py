@@ -102,66 +102,56 @@ def send_reschedule_request(docname, request_type):
     doc = frappe.get_doc("Travel Flight Details", docname)
     travel_planning_url = get_url_to_form("Travel Planning", doc.travel_planning)
 
+    if not doc.contact_email:
+            frappe.throw("Traveller email is not set.")
+    
+    recipients = [doc.contact_email]
+
+    attachments = []
+
     if request_type == "first":
-        roles = ["Travel Manager", "Travel Desk Manager"]
-        label = "First Reschedule Request"
+        subject = f"{frappe.db.get_value('Employee', doc.employee_name, 'employee_name')}: Revised Flight Ticket - First Rescheduling"
+        message = f"""
+            Dear {doc.employee_name}<br><br>
+            Your flight ticket has been revised. Please find the updated ticket attached for your reference.<br>
+            Kindly review the travel details and contact the travel team if you require any assistance.<br>
+            <a href="{travel_planning_url}">Open Travel Planning</a><br><br>
+            Thank you, and have a safe journey.<br><br>
+            Regards,<br>
+            Travel Team
+        """
+
+        ticket = doc.custom_rescheduled_flight_ticket
+        
     elif request_type == "second":
-        roles = ["Traveller"]
-        label = "Second Reschedule Request"
+        subject = f"{frappe.db.get_value('Employee', doc.employee_name, 'employee_name')}: Revised Flight Ticket - Second Rescheduling"
+        message = f"""
+            Dear {doc.employee_name}<br><br>
+            Your flight ticket has been rescheduled again. Please find the latest revised ticket attached.<br>
+            Kindly review the updated travel details. If you have any questions or need any assistance, please contact the Travel Team<br>
+            <a href="{travel_planning_url}">Open Travel Planning</a><br><br>
+            Thank you<br><br>
+            Regards,<br>
+            Travel Team
+        """
+
+        ticket = doc.custom_second_rescheduled_flight_ticket
     else:
         frappe.throw("Invalid request type")
 
-    # Get all enabled users with the relevant role(s)
-    # role_users = frappe.get_all(
-    #     "Has Role",
-    #     filters={
-    #         "role": ["in", roles],
-    #         "parenttype": "User",
-    #     },
-    #     fields=["parent"],
-    # )
-
-    # send only to traveller
-    if not doc.contact_email:
-        frappe.throw("Traveller email is not set.")
-
-    # recipients = list(set(
-    #     u.parent for u in role_users
-    #     if u.parent not in ("Administrator", "Guest")
-    # ))
-    recipients = [doc.contact_email]
-
-    # Optionally restrict to enabled users only
-    # if recipients:
-    #     enabled_users = frappe.get_all(
-    #         "User",
-    #         filters={"name": ["in", recipients], "enabled": 1},
-    #         pluck="name",
-    #     )
-    #     recipients = enabled_users
-
-    # if not recipients:
-    #     role_label = " or ".join(roles)
-    #     frappe.throw(f"No users found with role {role_label}.")
-
-    subject = f"{label} - {doc.employee} ({doc.travel_planning})"
-    message = f"""
-        Dear {"Traveller" if request_type == "second" else "Travel Desk Team"},<br><br>
-
-        This is to inform you that the {label.lower()} has been created by
-        <b>{frappe.session.user}</b>. Kindly review the rescheduled travel details and proceed with the necessary actions.<br><br>
-
-        <b>Travel Planning:</b> {doc.travel_planning}<br>
-        <a href="{travel_planning_url}">View Document</a><br><br>
-
-        Regards,<br>
-        {frappe.session.user}
-    """
+    # attach the ticket
+    if ticket:
+        file_doc = frappe.get_doc("File", {"file_url": ticket})
+        attachments.append({
+            "fname": file_doc.file_name,
+            "fcontent": file_doc.get_content()
+        })
 
     frappe.sendmail(
         recipients=recipients,
         subject=subject,
         message=message,
+        attachments=attachments,
     )
 
     return True
