@@ -39,6 +39,12 @@ frappe.ui.form.on("Travel Hotel Booking", {
             },
         });
     },
+    room_night: function(frm) {
+        calculate_total_hotel_charge(frm);
+    },
+    custom_hotel_cost_per_day: function(frm) {
+        calculate_total_hotel_charge(frm);
+    }
 });
 
 function travel_segment_add_back_button(frm) {
@@ -83,4 +89,10 @@ function style_back_button(frm, label) {
     frm.page.inner_toolbar
         .find(`button[data-label="${encodeURIComponent(label)}"]`)
         .addClass("btn-back-to-travel-planning");
+}
+
+
+function calculate_total_hotel_charge(frm) {
+    const total_hotel_charge = (frm.doc.custom_hotel_cost_per_day || 0) * (frm.doc.room_night || 0);
+    frm.set_value("custom_total_hotel_charge", total_hotel_charge);
 }

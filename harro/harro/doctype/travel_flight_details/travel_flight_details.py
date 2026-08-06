@@ -112,32 +112,37 @@ def send_reschedule_request(docname, request_type):
         frappe.throw("Invalid request type")
 
     # Get all enabled users with the relevant role(s)
-    role_users = frappe.get_all(
-        "Has Role",
-        filters={
-            "role": ["in", roles],
-            "parenttype": "User",
-        },
-        fields=["parent"],
-    )
+    # role_users = frappe.get_all(
+    #     "Has Role",
+    #     filters={
+    #         "role": ["in", roles],
+    #         "parenttype": "User",
+    #     },
+    #     fields=["parent"],
+    # )
 
-    recipients = list(set(
-        u.parent for u in role_users
-        if u.parent not in ("Administrator", "Guest")
-    ))
+    # send only to traveller
+    if not doc.contact_email:
+        frappe.throw("Traveller email is not set.")
+
+    # recipients = list(set(
+    #     u.parent for u in role_users
+    #     if u.parent not in ("Administrator", "Guest")
+    # ))
+    recipients = [doc.contact_email]
 
     # Optionally restrict to enabled users only
-    if recipients:
-        enabled_users = frappe.get_all(
-            "User",
-            filters={"name": ["in", recipients], "enabled": 1},
-            pluck="name",
-        )
-        recipients = enabled_users
+    # if recipients:
+    #     enabled_users = frappe.get_all(
+    #         "User",
+    #         filters={"name": ["in", recipients], "enabled": 1},
+    #         pluck="name",
+    #     )
+    #     recipients = enabled_users
 
-    if not recipients:
-        role_label = " or ".join(roles)
-        frappe.throw(f"No users found with role {role_label}.")
+    # if not recipients:
+    #     role_label = " or ".join(roles)
+    #     frappe.throw(f"No users found with role {role_label}.")
 
     subject = f"{label} - {doc.employee} ({doc.travel_planning})"
     message = f"""
