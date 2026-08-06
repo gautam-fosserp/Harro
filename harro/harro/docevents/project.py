@@ -425,6 +425,25 @@ def get_all_project_nodes(project):
     return result
 
 
+def get_permission_query_conditions(user):
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator" or set(frappe.get_roles(user)) & {"System Manager", "Project Manager"}:
+        return ""
+
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+    return f"""(`tabProject`.owner = {frappe.db.escape(user)}
+        OR EXISTS (
+            SELECT 1 FROM `tabProject User` pu
+            WHERE pu.parent = `tabProject`.name
+                AND pu.parenttype = 'Project'
+                AND (pu.user = {frappe.db.escape(user)}
+                    {f"OR pu.custom_employee = {frappe.db.escape(employee)}" if employee else ""})
+        ))"""
+
+
 def set_custom_title(doc, method):
     custom_ba_number = doc.custom_ba_number or ""
     project_name = doc.project_name or ""

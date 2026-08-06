@@ -157,7 +157,8 @@ jinja = {
 
 permission_query_conditions = {
     "Travel Planning Employee Details": "harro.harro.docevents.travel_planning.employee_row_permission_query",
-    "Task": "harro.harro.docevents.task.get_permission_query_conditions"
+    "Task": "harro.harro.docevents.task.get_permission_query_conditions",
+    "Project": "harro.harro.docevents.project.get_permission_query_conditions"
 }
 
 #
