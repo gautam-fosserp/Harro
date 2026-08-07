@@ -30,6 +30,12 @@ frappe.query_reports["FTE Utilization Summary"] = {
 			"label": "To Date",
 			"fieldname": "to_date",
 			"fieldtype": "Date"
+		},
+		{
+			"label": "Group By",
+			"fieldname": "group_by",
+			"fieldtype": "Select",
+			"options": "\nDepartment\nBA Number"
 		}
 	]
 };

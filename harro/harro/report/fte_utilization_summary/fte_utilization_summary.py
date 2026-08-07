@@ -50,41 +50,61 @@ def get_conditions(filters):
 	return conditions
 
 
+def get_group_by(filters):
+    if filters.get("group_by") == "Department":
+        return {
+            "group_by": "ts.department",
+            "order_by": "ts.department"
+        }
+
+    elif filters.get("group_by") == "BA Number":
+        return {
+            "group_by": "tsd.project",
+            "order_by": "tsd.project"
+        }
+
+    # Default: Group by Employee
+    return {
+        "group_by": "ts.employee",
+        "order_by": "ts.employee"
+    }
+
 def get_data(filters):
-	conditions = get_conditions(filters)
+    conditions = get_conditions(filters)
+    grouping = get_group_by(filters)
 
-	data = frappe.db.sql(f"""
-		SELECT
-			ts.name as timesheet,
-			ts.department AS department,
-			ts.employee AS employee,
-			1680 AS fte,
-			tsd.project AS project,
-			SUM(tsd.hours) AS total_hours,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 1  THEN tsd.hours ELSE 0 END) AS jan,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 2  THEN tsd.hours ELSE 0 END) AS feb,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 3  THEN tsd.hours ELSE 0 END) AS mar,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 4  THEN tsd.hours ELSE 0 END) AS apr,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 5  THEN tsd.hours ELSE 0 END) AS may,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 6  THEN tsd.hours ELSE 0 END) AS jun,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 7  THEN tsd.hours ELSE 0 END) AS jul,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 8  THEN tsd.hours ELSE 0 END) AS aug,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 9  THEN tsd.hours ELSE 0 END) AS sep,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 10 THEN tsd.hours ELSE 0 END) AS oct,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 11 THEN tsd.hours ELSE 0 END) AS nov,
-			SUM(CASE WHEN MONTH(tsd.from_time) = 12 THEN tsd.hours ELSE 0 END) AS `dec`
-		FROM 
-			`tabTimesheet Detail` tsd
-		INNER JOIN 
-			`tabTimesheet` ts ON ts.name = tsd.parent
-		WHERE 
-			ts.docstatus < 2 {conditions}
-		GROUP BY 
-			ts.employee, tsd.project, ts.employee
-		ORDER BY 
-			ts.department, ts.employee, tsd.project
-	""", filters, as_dict=True)
+    data = frappe.db.sql(f"""
+        SELECT
+            ts.name AS timesheet,
+            ts.department AS department,
+            ts.employee AS employee,
+            1680 AS fte,
+            tsd.project AS project,
+            SUM(tsd.hours) AS total_hours,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 1  THEN tsd.hours ELSE 0 END) AS jan,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 2  THEN tsd.hours ELSE 0 END) AS feb,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 3  THEN tsd.hours ELSE 0 END) AS mar,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 4  THEN tsd.hours ELSE 0 END) AS apr,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 5  THEN tsd.hours ELSE 0 END) AS may,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 6  THEN tsd.hours ELSE 0 END) AS jun,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 7  THEN tsd.hours ELSE 0 END) AS jul,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 8  THEN tsd.hours ELSE 0 END) AS aug,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 9  THEN tsd.hours ELSE 0 END) AS sep,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 10 THEN tsd.hours ELSE 0 END) AS oct,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 11 THEN tsd.hours ELSE 0 END) AS nov,
+            SUM(CASE WHEN MONTH(tsd.from_time) = 12 THEN tsd.hours ELSE 0 END) AS `dec`
+        FROM
+            `tabTimesheet Detail` tsd
+        INNER JOIN
+            `tabTimesheet` ts ON ts.name = tsd.parent
+        WHERE
+            ts.docstatus < 2 {conditions}
+        GROUP BY
+            {grouping["group_by"]}
+        ORDER BY
+            {grouping["order_by"]}
+    """, filters, as_dict=True)
 
-	return data
+    return data
 
 
