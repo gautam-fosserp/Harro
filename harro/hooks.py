@@ -83,7 +83,7 @@ doctype_calendar_js = {"Task" : "public/js/task_calender.js"}
 
 # Home Pages
 # ----------
-after_migrate = "harro.harro.custom_field.create_custom_fields_on_migrate"
+# after_migrate = "harro.harro.custom_field.create_custom_fields_on_migrate"
 # application home page (will override Website Settings)
 # home_page = "login"
 

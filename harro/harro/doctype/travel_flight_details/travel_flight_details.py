@@ -98,7 +98,7 @@ def send_rescheduling_invoice_email(docname, invoice_type):
     return True
 
 @frappe.whitelist()
-def send_reschedule_request(docname, request_type):
+def send_reschedule_ticket(docname, request_type):
     doc = frappe.get_doc("Travel Flight Details", docname)
     travel_planning_url = get_url_to_form("Travel Planning", doc.travel_planning)
 
@@ -110,7 +110,7 @@ def send_reschedule_request(docname, request_type):
     attachments = []
 
     if request_type == "first":
-        subject = f"{frappe.db.get_value('Employee', doc.employee_name, 'employee_name')}: Revised Flight Ticket - First Rescheduling"
+        subject = f"{doc.employee_name}: Revised Flight Ticket - First Rescheduling"
         message = f"""
             Dear {doc.employee_name}<br><br>
             Your flight ticket has been revised. Please find the updated ticket attached for your reference.<br>
@@ -124,7 +124,7 @@ def send_reschedule_request(docname, request_type):
         ticket = doc.custom_rescheduled_flight_ticket
         
     elif request_type == "second":
-        subject = f"{frappe.db.get_value('Employee', doc.employee_name, 'employee_name')}: Revised Flight Ticket - Second Rescheduling"
+        subject = f"{doc.employee_name}: Revised Flight Ticket - Second Rescheduling"
         message = f"""
             Dear {doc.employee_name}<br><br>
             Your flight ticket has been rescheduled again. Please find the latest revised ticket attached.<br>
@@ -168,13 +168,16 @@ def send_credit_note_email(docname):
 
     file_doc = frappe.get_doc("File", {"file_url": doc.custom_credit_note})
 
-    subject = f"Flight Cancellation Credit Note - {doc.employee} ({doc.travel_planning})"
+    # generate clickable link to the current travel flight details document
+    travel_flight_details_url = frappe.utils.get_url_to_form("Travel Flight Details", doc.name)
+
+    subject = f"Credit Note Issued for Cancelled Flight- Travel Planning ({doc.travel_planning})"
     message = f"""
-        Hello,<br><br>
+        Hello Accounts Team,<br><br>
         This is to inform you that a credit note has been issued for the cancelled flight
-        against <b>Travel Planning {doc.travel_planning}</b>.<br><br>
+        against <b>Travel Flight Details <a href="{travel_flight_details_url}">{doc.name}</a></b>.<br><br>
         Please find the credit note attached for your reference.<br><br>
-        Regards,<br>{frappe.session.user}
+        Regards,<br>Travel Manager
     """
 
     frappe.sendmail(
@@ -184,4 +187,73 @@ def send_credit_note_email(docname):
         attachments=[{"fid": file_doc.name}],
     )
 
+    return True
+
+
+@frappe.whitelist()
+def send_reschedule_request(docname, request_type):
+    doc = frappe.get_doc("Travel Flight Details", docname)
+    travel_planning_url = get_url_to_form("Travel Planning", doc.travel_planning)
+    travel_flight_details_url = frappe.utils.get_url_to_form("Travel Flight Details", doc.name)
+
+    recipients = []
+    # get all user having the Travel Manager Role
+    travel_managers = frappe.get_all(
+        "Has Role",
+        filters={
+            "role": "Travel Manager"
+        },
+        fields=["parent"]
+    )
+
+    #Add travel manager email addresses
+    for manager in travel_managers:
+        user = frappe.db.get_value(
+            "User",
+            {
+                "name": manager.parent,
+                "enabled": 1
+            },
+            "email"
+        )
+
+        if user:
+            recipients.append(user)
+
+        # Remove duplicate email addresses
+        recipients = list(set(recipients))
+
+    if request_type == "first":
+        subject = f"Travel Planning {doc.travel_planning} - First Rescheduling Request for {doc.employee_name}"
+        message = f"""
+            Dear Travel Mannager,<br><br>
+            This is to inform you that a first rescheduling request has been updated for <b>{doc.employee_name}</b> under Travel Planning {doc.travel_planning}.<br>
+            Kindly review the rescheduled travel details and proceed with the necessary actions.<br>
+            <a href="{travel_planning_url}">Open Travel Planning</a><br><br>
+            <a href="{travel_flight_details_url}">Click here to view the details</a><br><br>
+            Regards,<br>
+            {frappe.db.get_value("User", doc.owner, "full_name")}
+        """
+        
+    elif request_type == "second":
+        subject = f"Travel Planning {doc.travel_planning} - Second Rescheduling Request for {doc.employee_name}"
+        message = f"""
+            Dear Travel Manager<br><br>
+            This is to inform you that a second rescheduling request has been updated for <b>{doc.employee_name}</b> under Travel Planning {doc.travel_planning}.<br>
+            Kindly review the rescheduled travel details and proceed with the necessary actions.<br>
+            <a href="{travel_planning_url}">Open Travel Planning</a><br><br>
+            <a href="{travel_flight_details_url}">Click here to view the details</a><br><br>
+            Thank you<br><br>
+            Regards,<br>
+            {frappe.db.get_value("User", doc.owner, "full_name")}
+        """
+    else:
+        frappe.throw("Invalid request type")
+
+
+    frappe.sendmail(
+        recipients=recipients,
+        subject=subject,
+        message=message
+    )
     return True
