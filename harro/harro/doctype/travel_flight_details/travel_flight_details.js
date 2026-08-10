@@ -42,30 +42,35 @@ frappe.ui.form.on("Travel Flight Details", {
         });
     },
     custom_send_revised_ticket(frm) {
-        send_reschedule_request(frm, "first");
+        send_reschedule_ticket(frm, "first");
     },
     custom_send_second_reschedule_ticket(frm) {
-        send_reschedule_request(frm, "second");
+        send_reschedule_ticket(frm, "second");
     },
     custom_send_credit_note(frm) {
-        const send = () => {
-            frappe.call({
-                method: "harro.harro.doctype.travel_flight_details.travel_flight_details.send_credit_note_email",
-                args: { docname: frm.doc.name },
-                freeze: true,
-                freeze_message: "Sending email...",
-                callback(r) {
-                    if (!r.exc) {
-                        frappe.show_alert({ message: "Credit Note email sent", indicator: "green" });
-                    }
-                },
-            });
-        };
-        if (frm.is_dirty()) {
-            frm.save().then(send);
-        } else {
-            send();
-        }
+        frappe.confirm(
+            __("Are you sure you want to send the Credit Note email?"),
+            () => {
+                const send = () => {
+                    frappe.call({
+                        method: "harro.harro.doctype.travel_flight_details.travel_flight_details.send_credit_note_email",
+                        args: { docname: frm.doc.name },
+                        freeze: true,
+                        freeze_message: "Sending email...",
+                        callback(r) {
+                            if (!r.exc) {
+                                frappe.show_alert({ message: "Credit Note email sent", indicator: "green" });
+                            }
+                        },
+                    });
+                };
+                if (frm.is_dirty()) {
+                    frm.save().then(send);
+                } else {
+                    send();
+                }
+            }
+        )
     },
     custom_onward_travel_date(frm) {
         if (frm.is_new()) return;
@@ -122,7 +127,7 @@ frappe.ui.form.on("Travel Flight Details", {
     }
 });
 
-function send_reschedule_request(frm, request_type) {
+function send_reschedule_ticket(frm, request_type) {
     if (frm.is_new() || frm.is_dirty()) {
         frappe.msgprint('Please save the document before sending then email');
         return;
@@ -134,7 +139,7 @@ function send_reschedule_request(frm, request_type) {
         `Send ${label} Rescheduling Request email to the Travel Desk?`,
         function() {
             frappe.call({
-                method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_reschedule_request',
+                method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_reschedule_ticket',
                 args: {
                     docname: frm.doc.name,
                     request_type: request_type
@@ -149,6 +154,34 @@ function send_reschedule_request(frm, request_type) {
             })
         }
     )
+}
+
+function send_reschedule_request(frm, request_type) {
+    if (frm.is_new() || frm.is_dirty()) {
+        frappe.msgprint('Please save the document before sending the email.')
+        return;
+    }
+
+    const label = request_type == 'first' ? 'First' : 'Second';
+    frappe.confirm(
+        `Send ${label} Rescheduling Request email to the Travel Manager?`,
+        function() {
+            frappe.call({
+                method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_reschedule_request',
+                args: {
+                    docname: frm.doc.name,
+                    request_type: request_type
+                },
+                freeze: true,
+                freeze_message: 'Sending email...',
+                callback: function(r) {
+                    if(!r.exc) {
+                        frappe.show_alert({message: `${label} Rescheduling Invoice sent`, indicator: 'green'});
+                    }
+                }
+            });
+        }
+    );
 }
 
 function send_invoice_email(frm, invoice_type) {

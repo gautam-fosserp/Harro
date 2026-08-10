@@ -315,14 +315,6 @@ def create_custom_fields_on_migrate():
                 "hidden": 1
             }
         ],
-        "Expense Details" : [
-            {
-                "fieldname": "create_purchase_invoice",
-                "label": "Create Purchase Invoice",
-                "fieldtype": "Button",
-                "insert_after": "profit"
-            }
-        ],
         "Taxi" : [
             {
                 "fieldname": "taxi_requestor",
@@ -600,6 +592,12 @@ def create_custom_fields_on_migrate():
             }
         ],
         "Expense Details" :[
+            {
+                "fieldname": "create_purchase_invoice",
+                "label": "Create Purchase Invoice",
+                "fieldtype": "Button",
+                "insert_after": "profit"
+            },
             {
                "fieldname": "invoice_attachment",
                "label": "Invoice Attachment",
