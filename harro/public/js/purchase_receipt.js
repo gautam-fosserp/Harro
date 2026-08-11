@@ -27,6 +27,7 @@ frappe.ui.form.on("Purchase Receipt", {
         
         // Generate payment schedule on refresh if missing
         if (
+            frm.doc.docstatus === 0 &&
             frm.doc.custom_payment_terms_template &&
             (!frm.doc.custom_payment_schedule ||
              frm.doc.custom_payment_schedule.length === 0)
