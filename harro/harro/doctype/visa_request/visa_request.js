@@ -3,6 +3,7 @@
 
 frappe.ui.form.on("Visa Request", {
 	refresh(frm) {
+        hide_child_table(frm);
         // change "To Applicant" label to employee_name
         if (frm.doc.employee_name) {
             frm.set_df_property(
@@ -98,9 +99,97 @@ frappe.ui.form.on("Visa Request", {
             );
             frm.refresh_field("to_applicant");
         }
+    },
+    employee_id(frm) {
+        hide_child_table(frm);
     }
 });
 
+
+function hide_child_table(frm) {
+    const user_roles = frappe.user_roles || [];
+
+    const restricted_roles = [
+        "Managing Director",
+        "Operation Department Head",
+        "Customer Service Department Head"
+    ];
+
+    const is_restricted_role = restricted_roles.some(role =>
+        user_roles.includes(role)
+    );
+
+    // Restricted roles cannot see any child table
+    if (is_restricted_role) {
+        set_child_tables_visibility(frm, false);
+        return;
+    }
+
+    // No employee selected
+    if (!frm.doc.employee_id) {
+        set_child_tables_visibility(frm, false);
+        return;
+    }
+
+    frappe.db.get_value(
+        "Employee",
+        frm.doc.employee_id,
+        "user_id"
+    ).then(r => {
+        const employee_user = r.message?.user_id;
+
+        const is_self_request =
+            employee_user === frappe.session.user;
+
+        if (is_self_request) {
+            // Self request:
+            // Show only Documents (Traveller)
+            set_child_tables_visibility(frm, true);
+        } else {
+            // Request for another employee:
+            // Hide all child tables
+            set_child_tables_visibility(frm, false);
+        }
+    });
+}
+
+
+function set_child_tables_visibility(frm, show_traveller) {
+    // Documents (Traveller)
+    frm.set_df_property(
+        "check_list",
+        "hidden",
+        show_traveller ? 0 : 1
+    );
+
+    // Documents (Inviting Company)
+    frm.set_df_property(
+        "custom_documents_inviting_company",
+        "hidden",
+        1
+    );
+
+    // Documents (Harro)
+    frm.set_df_property(
+        "custom_documents_harro",
+        "hidden",
+        1
+    );
+
+    //heading
+    frm.set_df_property(
+        "custom_please_provide_hard_copy_of_documents_to_travel_desk",
+        "hidden",
+        show_traveller ? 0 : 1
+    );
+
+    frm.refresh_field("check_list");
+    frm.refresh_field("custom_documents_inviting_company");
+    frm.refresh_field("custom_documents_harro");
+    frm.refresh_field(
+        "custom_please_provide_hard_copy_of_documents_to_travel_desk"
+    );
+}
 
 function set_employee_filter(frm) {
     if (frm._employee_filter_set) return;
