@@ -124,6 +124,13 @@ function hide_child_table(frm) {
         return;
     }
 
+    // show child table to Travel Manager
+    const is_travel_manager = user_roles.includes("Travel Manager")
+    if (is_travel_manager) {
+        set_child_tables_visibility(frm, true);
+        return;
+    }
+
     if (!frm.doc.employee_id) {
         set_child_tables_visibility(frm, false);
         return;
