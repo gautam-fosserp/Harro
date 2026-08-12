@@ -111,8 +111,7 @@ function hide_child_table(frm) {
 
     const restricted_roles = [
         "Managing Director",
-        "Operation Department Head",
-        "Customer Service Department Head"
+        "Operation Department Head"
     ];
 
     const is_restricted_role = restricted_roles.some(role =>
@@ -125,7 +124,6 @@ function hide_child_table(frm) {
         return;
     }
 
-    // No employee selected
     if (!frm.doc.employee_id) {
         set_child_tables_visibility(frm, false);
         return;
