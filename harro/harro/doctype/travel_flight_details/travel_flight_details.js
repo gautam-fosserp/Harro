@@ -10,11 +10,20 @@ frappe.ui.form.on("Travel Flight Details", {
     custom_create_purchase_invoice_flight(frm) {
         const create_invoice = () => {
             frappe.call({
-                method: "harro.harro.doctype.travel_planning.travel_planning.get_flight_segment_purchase_invoice_defaults",
-                args: { name: frm.doc.name },
+                method: "harro.harro.doctype.travel_flight_details.travel_flight_details.make_purchase_invoice",
+                args: {
+                    source_name: frm.doc.name
+                },
+                freeze: true,
+                freeze_message: __("Creating Purchase Invoice..."),
                 callback(r) {
                     if (r.message) {
-                        frappe.set_route("Form", "Purchase Invoice", r.message);
+                        frappe.model.sync(r.message);
+                        frappe.set_route(
+                            "Form",
+                            "Purchase Invoice",
+                            r.message.name
+                        );
                     }
                 },
             });
@@ -124,6 +133,27 @@ frappe.ui.form.on("Travel Flight Details", {
     },
     custom_round_trip_cost_as_per_invoice: function(frm) {
         calculate_total_flight_cost(frm);
+    },
+    custom_create_onward_flight_invoice: function(frm) {
+        frappe.call({
+            method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.make_purchase_invoice',
+            args: {
+                source_name: frm.doc.name
+            },
+            freeze: true,
+            freeze_message: __("Creating Purchase Invoice..."),
+            callback(r) {
+                if (r.message) {
+                    frappe.model.sync(r.message);
+
+                    frappe.set_route(
+                        "Form",
+                        "Purchase Invoice",
+                        r.message.name
+                    );
+                }
+            }
+        });
     }
 });
 
