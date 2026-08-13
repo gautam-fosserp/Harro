@@ -257,3 +257,53 @@ def send_reschedule_request(docname, request_type):
         message=message
     )
     return True
+
+@frappe.whitelist()
+def make_onward_flight_purchase_invoice(source_name):
+    travel_flight_doc = frappe.get_doc("Travel Flight Details", source_name)
+    invoice = frappe.new_doc("Purchase Invoice")
+    invoice.supplier = travel_flight_doc.custom_onward_flight_booking_vendor
+    invoice.bill_no = travel_flight_doc.custom_flight_invoice_id
+    invoice.custom_supplier_invoice = travel_flight_doc.custom_flight_invoice_attachment
+
+    invoice.append("items", {
+        "item_code": travel_flight_doc.custom_service_type,
+        "qty": 1,
+        "rate": travel_flight_doc.custom_onward_flight_cost_as_per_invoice
+    })
+
+    return invoice
+
+@frappe.whitelist()
+def make_purchase_invoice(source_name):
+    travel_flight_doc = frappe.get_doc("Travel Flight Details", source_name)
+    invoice = frappe.new_doc("Purchase Invoice")
+    if travel_flight_doc.custom_journey_type == "Round Trip":
+        invoice.supplier = travel_flight_doc.custom_flight_booking_vendor
+        invoice.bill_no = travel_flight_doc.custom_round_trip_invoice_id
+        invoice.custom_supplier_invoice = travel_flight_doc.custom_round_trip_invoice_attachment
+
+        invoice.append("items", {
+            "item_code": travel_flight_doc.custom_service_type,
+            "qty": 1,
+            "rate": travel_flight_doc.custom_round_trip_cost_as_per_invoice
+        })
+
+    elif travel_flight_doc.custom_journey_type == "Onward & Return Trip":
+        invoice.supplier = travel_flight_doc.custom_flight_booking_vendor
+        invoice.bill_no = travel_flight_doc.custom_return_flight_invoice_id
+        invoice.custom_supplier_invoice = travel_flight_doc.custom_return_flight_invoice_attachment
+
+        invoice.append("items", {
+            "item_code": travel_flight_doc.custom_service_type,
+            "qty": 1,
+            "rate": travel_flight_doc.custom_return_flight_cost_as_per_invoice
+        })
+
+    else:
+        frappe.throw(
+            f"Purchase Invoice creation is not supported for journey type "
+            f"{travel_flight_doc.custom_journey_type}"
+        ) 
+    
+    return invoice
