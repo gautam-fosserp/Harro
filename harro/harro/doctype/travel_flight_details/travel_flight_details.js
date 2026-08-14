@@ -136,7 +136,7 @@ frappe.ui.form.on("Travel Flight Details", {
     },
     custom_create_onward_flight_invoice: function(frm) {
         frappe.call({
-            method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.make_purchase_invoice',
+            method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.make_onward_flight_purchase_invoice',
             args: {
                 source_name: frm.doc.name
             },
