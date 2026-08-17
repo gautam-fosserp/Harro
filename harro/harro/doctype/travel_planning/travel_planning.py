@@ -990,6 +990,8 @@ def get_flight_segments(travel_planning):
             "custom_return_travel_to",
             "custom_flight_booking_status",
             "custom_total_flight_cost_as_per_invoice",
+            "custom_onward_travel_from",
+            "custom_onward_travel_to"
         ],
         order_by="employee, segment_no",
     )

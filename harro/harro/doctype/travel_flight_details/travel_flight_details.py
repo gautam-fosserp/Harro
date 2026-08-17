@@ -258,52 +258,76 @@ def send_reschedule_request(docname, request_type):
     )
     return True
 
+from frappe.model.mapper import get_mapped_doc
 @frappe.whitelist()
 def make_onward_flight_purchase_invoice(source_name):
-    travel_flight_doc = frappe.get_doc("Travel Flight Details", source_name)
-    invoice = frappe.new_doc("Purchase Invoice")
-    invoice.supplier = travel_flight_doc.custom_onward_flight_booking_vendor
-    invoice.bill_no = travel_flight_doc.custom_flight_invoice_id
-    invoice.custom_supplier_invoice = travel_flight_doc.custom_flight_invoice_attachment
+    def get_missing_values(source, target):
+        target.append("items", {
+            "item_code": source.custom_service_type,
+            "item_name": frappe.get_cached_value("Item", source.custom_service_type, "item_name"),
+            "uom": frappe.get_cached_value("Item", source.custom_service_type, "purchase_uom")
+                or frappe.get_cached_value("Item", source.custom_service_type, "stock_uom"),
+            "qty": 1,
+            "rate": source.custom_onward_flight_cost_as_per_invoice
+        })
 
-    invoice.append("items", {
-        "item_code": travel_flight_doc.custom_service_type,
-        "qty": 1,
-        "rate": travel_flight_doc.custom_onward_flight_cost_as_per_invoice
-    })
-
-    return invoice
+    doc = get_mapped_doc(
+        "Travel Flight Details",
+        source_name,
+        {
+            "Travel Flight Details": {
+                "doctype": "Purchase Invoice",
+                "field_map": {
+                    "custom_onward_flight_booking_vendor": "supplier",
+                    "custom_flight_invoice_id": "bill_no",
+                    "custom_flight_invoice_attachment": "custom_supplier_invoice"
+                },
+            }
+        },
+        postprocess=get_missing_values,
+    )
+    return doc
 
 @frappe.whitelist()
 def make_purchase_invoice(source_name):
     travel_flight_doc = frappe.get_doc("Travel Flight Details", source_name)
-    invoice = frappe.new_doc("Purchase Invoice")
-    if travel_flight_doc.custom_journey_type == "Round Trip":
-        invoice.supplier = travel_flight_doc.custom_flight_booking_vendor
-        invoice.bill_no = travel_flight_doc.custom_round_trip_invoice_id
-        invoice.custom_supplier_invoice = travel_flight_doc.custom_round_trip_invoice_attachment
 
-        invoice.append("items", {
-            "item_code": travel_flight_doc.custom_service_type,
-            "qty": 1,
-            "rate": travel_flight_doc.custom_round_trip_cost_as_per_invoice
-        })
-
-    elif travel_flight_doc.custom_journey_type == "Onward & Return Trip":
-        invoice.supplier = travel_flight_doc.custom_flight_booking_vendor
-        invoice.bill_no = travel_flight_doc.custom_return_flight_invoice_id
-        invoice.custom_supplier_invoice = travel_flight_doc.custom_return_flight_invoice_attachment
-
-        invoice.append("items", {
-            "item_code": travel_flight_doc.custom_service_type,
-            "qty": 1,
-            "rate": travel_flight_doc.custom_return_flight_cost_as_per_invoice
-        })
-
-    else:
+    if travel_flight_doc.custom_journey_type not in ("Round Trip", "Onward & Return Trip"):
         frappe.throw(
             f"Purchase Invoice creation is not supported for journey type "
             f"{travel_flight_doc.custom_journey_type}"
-        ) 
-    
-    return invoice
+        )
+
+    def set_missing_values(source, target):
+        target.supplier = source.custom_flight_booking_vendor
+
+        if source.custom_journey_type == "Round Trip":
+            target.bill_no = source.custom_round_trip_invoice_id
+            target.custom_supplier_invoice = source.custom_round_trip_invoice_attachment
+            rate = source.custom_round_trip_cost_as_per_invoice
+        else:  # Onward & Return Trip
+            target.bill_no = source.custom_return_flight_invoice_id
+            target.custom_supplier_invoice = source.custom_return_flight_invoice_attachment
+            rate = source.custom_return_flight_cost_as_per_invoice
+
+        item = frappe.get_cached_doc("Item", source.custom_service_type)
+
+        target.append("items", {
+            "item_code": source.custom_service_type,
+            "item_name": item.item_name,
+            "uom": item.purchase_uom or item.stock_uom,
+            "qty": 1,
+            "rate": rate,
+        })
+
+    doc = get_mapped_doc(
+        "Travel Flight Details",
+        source_name,
+        {
+            "Travel Flight Details": {
+                "doctype": "Purchase Invoice",
+            }
+        },
+        postprocess=set_missing_values,
+    )
+    return doc
