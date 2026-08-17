@@ -264,11 +264,7 @@ def make_onward_flight_purchase_invoice(source_name):
     travel_flight_doc = frappe.get_doc("Travel Flight Details", source_name)
 
     def update_item_price(item_code, rate):
-        """Update existing Item Price(s) for this item to match invoice rate.
-        If none exist, create one against the default buying price list."""
-        buying_price_list = frappe.db.get_single_value(
-            "Buying Settings", "buying_price_list"
-        ) or "Standard Buying"
+        """Update existing Item Price(s) for this item to match invoice rate."""
 
         existing_prices = frappe.get_all(
             "Item Price",
@@ -279,13 +275,6 @@ def make_onward_flight_purchase_invoice(source_name):
         if existing_prices:
             for ip in existing_prices:
                 frappe.db.set_value("Item Price", ip.name, "price_list_rate", rate)
-        else:
-            new_ip = frappe.new_doc("Item Price")
-            new_ip.item_code = item_code
-            new_ip.price_list = buying_price_list
-            new_ip.buying = 1
-            new_ip.price_list_rate = rate
-            new_ip.insert(ignore_permissions=True)
 
     def get_missing_values(source, target):
         item = frappe.get_cached_doc("Item", source.custom_service_type)
@@ -335,11 +324,7 @@ def make_purchase_invoice(source_name):
         )
 
     def update_item_price(item_code, rate):
-        """Update existing Item Price(s) for this item to match invoice rate.
-        If none exist, create one against the default buying price list."""
-        buying_price_list = frappe.db.get_single_value(
-            "Buying Settings", "buying_price_list"
-        ) or "Standard Buying"
+        """Update existing Item Price(s) for this item to match invoice rate."""
 
         existing_prices = frappe.get_all(
             "Item Price",
@@ -350,13 +335,6 @@ def make_purchase_invoice(source_name):
         if existing_prices:
             for ip in existing_prices:
                 frappe.db.set_value("Item Price", ip.name, "price_list_rate", rate)
-        else:
-            new_ip = frappe.new_doc("Item Price")
-            new_ip.item_code = item_code
-            new_ip.price_list = buying_price_list
-            new_ip.buying = 1
-            new_ip.price_list_rate = rate
-            new_ip.insert(ignore_permissions=True)
 
     def set_missing_values(source, target):
         target.supplier = source.custom_flight_booking_vendor
