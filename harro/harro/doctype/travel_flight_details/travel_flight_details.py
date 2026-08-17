@@ -261,14 +261,49 @@ def send_reschedule_request(docname, request_type):
 from frappe.model.mapper import get_mapped_doc
 @frappe.whitelist()
 def make_onward_flight_purchase_invoice(source_name):
+    travel_flight_doc = frappe.get_doc("Travel Flight Details", source_name)
+
+    def update_item_price(item_code, rate):
+        """Update existing Item Price(s) for this item to match invoice rate.
+        If none exist, create one against the default buying price list."""
+        buying_price_list = frappe.db.get_single_value(
+            "Buying Settings", "buying_price_list"
+        ) or "Standard Buying"
+
+        existing_prices = frappe.get_all(
+            "Item Price",
+            filters={"item_code": item_code, "buying": 1},
+            fields=["name", "price_list"],
+        )
+
+        if existing_prices:
+            for ip in existing_prices:
+                frappe.db.set_value("Item Price", ip.name, "price_list_rate", rate)
+        else:
+            new_ip = frappe.new_doc("Item Price")
+            new_ip.item_code = item_code
+            new_ip.price_list = buying_price_list
+            new_ip.buying = 1
+            new_ip.price_list_rate = rate
+            new_ip.insert(ignore_permissions=True)
+
     def get_missing_values(source, target):
+        item = frappe.get_cached_doc("Item", source.custom_service_type)
+        rate = source.custom_onward_flight_cost_as_per_invoice
+
+        # update item price BEFORE building the item row
+        update_item_price(item.name, rate)
+
         target.append("items", {
             "item_code": source.custom_service_type,
-            "item_name": frappe.get_cached_value("Item", source.custom_service_type, "item_name"),
-            "uom": frappe.get_cached_value("Item", source.custom_service_type, "purchase_uom")
-                or frappe.get_cached_value("Item", source.custom_service_type, "stock_uom"),
+            "item_name": item.item_name,
+            "uom": item.purchase_uom or item.stock_uom,
+            "stock_uom": item.stock_uom,
+            "conversion_factor": 1,
             "qty": 1,
-            "rate": source.custom_onward_flight_cost_as_per_invoice
+            "rate": rate,
+            "price_list_rate": rate,
+            "cost_center": "Main - Harro IN",
         })
 
     doc = get_mapped_doc(
@@ -280,12 +315,13 @@ def make_onward_flight_purchase_invoice(source_name):
                 "field_map": {
                     "custom_onward_flight_booking_vendor": "supplier",
                     "custom_flight_invoice_id": "bill_no",
-                    "custom_flight_invoice_attachment": "custom_supplier_invoice"
+                    "custom_flight_invoice_attachment": "custom_supplier_invoice",
                 },
             }
         },
         postprocess=get_missing_values,
     )
+
     return doc
 
 @frappe.whitelist()
@@ -297,6 +333,30 @@ def make_purchase_invoice(source_name):
             f"Purchase Invoice creation is not supported for journey type "
             f"{travel_flight_doc.custom_journey_type}"
         )
+
+    def update_item_price(item_code, rate):
+        """Update existing Item Price(s) for this item to match invoice rate.
+        If none exist, create one against the default buying price list."""
+        buying_price_list = frappe.db.get_single_value(
+            "Buying Settings", "buying_price_list"
+        ) or "Standard Buying"
+
+        existing_prices = frappe.get_all(
+            "Item Price",
+            filters={"item_code": item_code, "buying": 1},
+            fields=["name", "price_list"],
+        )
+
+        if existing_prices:
+            for ip in existing_prices:
+                frappe.db.set_value("Item Price", ip.name, "price_list_rate", rate)
+        else:
+            new_ip = frappe.new_doc("Item Price")
+            new_ip.item_code = item_code
+            new_ip.price_list = buying_price_list
+            new_ip.buying = 1
+            new_ip.price_list_rate = rate
+            new_ip.insert(ignore_permissions=True)
 
     def set_missing_values(source, target):
         target.supplier = source.custom_flight_booking_vendor
@@ -312,12 +372,19 @@ def make_purchase_invoice(source_name):
 
         item = frappe.get_cached_doc("Item", source.custom_service_type)
 
+        # update item price BEFORE building the item row
+        update_item_price(item.name, rate)
+
         target.append("items", {
             "item_code": source.custom_service_type,
             "item_name": item.item_name,
             "uom": item.purchase_uom or item.stock_uom,
+            "stock_uom": item.stock_uom,
+            "conversion_factor": 1,
             "qty": 1,
             "rate": rate,
+            "price_list_rate": rate,
+            "cost_center": "Main - Harro IN",
         })
 
     doc = get_mapped_doc(
@@ -330,4 +397,5 @@ def make_purchase_invoice(source_name):
         },
         postprocess=set_missing_values,
     )
+    
     return doc
