@@ -209,9 +209,13 @@ const TRAVEL_SEGMENT_TYPES = [
         label_fn: (row) => `${row.custom_onward_travel_date || "—"} → ${row.custom_return_travel_date || "—"}`,
         // meta_fn: (row) => row.custom_flight_booking_status || __("Draft"),
         meta_fn: (row) => {
-            const from_to = `${row.custom_return_travel_from || "—"} → ${row.custom_return_travel_to || "—"}`;
             const status = row.custom_flight_booking_status || __("Draft");
-            return `${from_to} · ${status}`;
+            const onward = `${row.custom_onward_travel_from || "-"} -> ${row.custom_onward_travel_to || "-"}`;
+            const ret = `${row.custom_return_travel_from || "-"} -> ${row.custom_return_travel_to || "-"}`;
+            return [
+                `${__("Onward")}: ${onward} -> ${status}`,
+                `${__("Return")}: ${ret} -> ${status}`,
+            ];
         },
         anchor_field: "custom_flight_details",
         section_label: __("Flight Details"),
@@ -467,6 +471,15 @@ frappe.ui.form.on("Travel Planning", {
         calculate_outstanding_claims(frm);
     }
 });
+
+
+function build_stub_meta_html(segment_type, seg_row) {
+    const lines = segment_type.meta_fn(seg_row);
+    const arr = Array.isArray(lines) ? lines : [lines];
+    return arr
+        .map((line) => `<div class="tp-stub-meta-line">${frappe.utils.escape_html(line)}</div>`)
+        .join("");
+}
 
 /**
  * Rename the grid's "Add Row" button to "Add Traveller".
@@ -1143,7 +1156,7 @@ function render_row_segment_section(frm, grid_row, segment_type, employee, cdn) 
                     <div class="tp-stub ${status_class}">
                         <div class="tp-stub-body">
                             <div class="tp-stub-title">${frappe.utils.escape_html(segment_type.label_fn(seg_row))}</div>
-                            <div class="tp-stub-meta">${__("Segment")} ${seg_row.segment_no || ""} · ${frappe.utils.escape_html(segment_type.meta_fn(seg_row))}</div>
+                            <div class="tp-stub-meta">${build_stub_meta_html(segment_type, seg_row)}</div>
                         </div>
                         <div class="tp-stub-actions">
                             <button class="tp-view" title="${__("View")}">${ICON_VIEW}</button>
@@ -1259,7 +1272,7 @@ frappe.call({
                 <div class="tp-stub ${status_class}">
                     <div class="tp-stub-body">
                         <div class="tp-stub-title">${frappe.utils.escape_html(row.employee_name || row.employee || "")} — ${frappe.utils.escape_html(segment_type.label_fn(row))}</div>
-                        <div class="tp-stub-meta">${__("Segment")} ${row.segment_no || ""} · ${frappe.utils.escape_html(segment_type.meta_fn(row))}</div>
+                        <div class="tp-stub-meta">${build_stub_meta_html(segment_type, row)}</div>
                     </div>
                     <div class="tp-stub-actions">
                         <button class="tp-view" title="${__("View")}">${ICON_VIEW}</button>
