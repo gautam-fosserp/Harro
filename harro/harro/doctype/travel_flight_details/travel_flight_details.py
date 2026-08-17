@@ -399,3 +399,260 @@ def make_purchase_invoice(source_name):
     )
     
     return doc
+
+
+@frappe.whitelist()
+def send_cancellation_request_email(source_name):
+    doc = frappe.get_doc("Travel Flight Details", source_name)
+
+    # Fetch all users having Travel Manager role
+    travel_managers = frappe.get_all(
+        "Has Role",
+        filters={
+            "role": "Travel Manager",
+        },
+        fields=["parent"],
+    )
+
+    recipients = []
+
+    for row in travel_managers:
+        user = frappe.db.get_value(
+            "User",
+            row.parent,
+            ["name", "email", "enabled"],
+            as_dict=True,
+        )
+
+        if user and user.enabled and user.email:
+            recipients.append(user.email)
+
+    # Remove duplicate emails while preserving order
+    recipients = list(dict.fromkeys(recipients))
+
+    if not recipients:
+        frappe.throw(
+            "No active users found with the Travel Manager role."
+        )
+
+    employee_name = ""
+
+    if doc.employee:
+        employee_name = (
+            frappe.db.get_value(
+                "Employee",
+                doc.employee,
+                "employee_name",
+            )
+            or doc.employee
+        )
+
+    travel_planning = doc.travel_planning or "-"
+
+    travel_planning_link = frappe.utils.get_url_to_form(
+        "Travel Planning",
+        doc.travel_planning
+    ) if doc.travel_planning else "#"
+
+    flight_details_link = frappe.utils.get_url_to_form(
+        "Travel Flight Details",
+        doc.name,
+    )
+
+    subject = (
+        f"Travel Planning {travel_planning} – "
+        f"Flight Cancellation Request for {employee_name}"
+    )
+
+    message = f"""
+    <div style="
+        margin:0;
+        padding:0;
+        background:#f3f6f9;
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+        color:#1f2937;
+    ">
+
+        <div style="
+            width:100%;
+            padding:45px 18px;
+            box-sizing:border-box;
+        ">
+
+            <!-- Main Card -->
+            <div style="
+                max-width:650px;
+                margin:0 auto;
+                background:#ffffff;
+                border-radius:16px;
+                overflow:hidden;
+                border:1px solid #e6eaf0;
+                box-shadow:0 8px 30px rgba(15,23,42,0.08);
+            ">
+
+                <!-- Header -->
+                <div style="
+                    padding:34px 36px;
+                    background:linear-gradient(135deg,#1f4e78 0%,#285f8f 100%);
+                ">
+
+                    <div style="
+                        margin:0;
+                        color:#ffffff;
+                        font-size:27px;
+                        line-height:36px;
+                        font-weight:700;
+                        letter-spacing:-0.4px;
+                    ">
+                        Flight Cancellation Request
+                    </div>
+
+                </div>
+
+                <!-- Body -->
+                <div style="padding:36px;">
+
+                    <!-- Greeting -->
+                    <p style="
+                        margin:0 0 22px;
+                        font-size:16px;
+                        line-height:26px;
+                        color:#111827;
+                    ">
+                        Dear Travel Manager,
+                    </p>
+
+                    <!-- Main Message -->
+                    <p style="
+                        margin:0;
+                        font-size:15px;
+                        line-height:27px;
+                        color:#4b5563;
+                    ">
+                        This is to inform you that a
+                        <strong style="color:#111827;font-weight:700;">
+                            flight cancellation request
+                        </strong>
+                        has been updated for
+                        <strong style="color:#111827;font-weight:700;">
+                            {frappe.utils.escape_html(employee_name)}
+                        </strong>
+                        under Travel Planning
+                        under Travel Planning
+                        <a href="{travel_planning_link}"
+                            style="
+                                color:#1f4e78;
+                                text-decoration:none;
+                                font-weight:700;
+                            ">
+                            {frappe.utils.escape_html(travel_planning or "")}
+                        </a>.
+                    </p>
+
+                    <!-- Action Message -->
+                    <div style="
+                        margin:28px 0;
+                        padding:20px 22px;
+                        background:#f8fafc;
+                        border:1px solid #e5eaf0;
+                        border-radius:10px;
+                    ">
+
+                        <p style="
+                            margin:0;
+                            font-size:14px;
+                            line-height:24px;
+                            color:#4b5563;
+                        ">
+                            Kindly review the cancellation details and proceed
+                            with the necessary actions.
+                        </p>
+
+                    </div>
+
+                    <!-- CTA Section -->
+                    <div style="
+                        margin:34px 0 10px;
+                        text-align:center;
+                    ">
+
+                        <a href="{flight_details_link}"
+                        style="
+                            display:inline-block;
+                            padding:14px 30px;
+                            background:#1f4e78;
+                            color:#ffffff;
+                            text-decoration:none;
+                            border-radius:8px;
+                            font-size:14px;
+                            line-height:20px;
+                            font-weight:700;
+                            letter-spacing:0.1px;
+                            box-shadow:0 4px 10px rgba(31,78,120,0.20);
+                        ">
+                            View Travel Flight Details
+                        </a>
+
+                    </div>
+
+                    <!-- Signature -->
+                    <div style="
+                        margin-top:36px;
+                        padding-top:24px;
+                        border-top:1px solid #edf0f3;
+                    ">  
+
+                        <p style="
+                            margin:0;
+                            font-size:14px;
+                            line-height:23px;
+                            color:#6b7280;
+                        ">
+                            Regards,<br>
+                            <strong style="
+                                color:#1f2937;
+                                font-weight:600;
+                            ">
+                                Travel Requestor
+                            </strong>
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div style="
+                    padding:18px 36px;
+                    background:#fafbfc;
+                    border-top:1px solid #edf0f3;
+                    text-align:center;
+                ">
+
+                    <p style="
+                        margin:0;
+                        font-size:11px;
+                        line-height:18px;
+                        color:#a0a8b3;
+                    ">
+                        This is an automated notification.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+"""
+
+    frappe.sendmail(
+        recipients=recipients,
+        subject=subject,
+        message=message,
+    )
+
+    frappe.msgprint(
+        f"Email notification sent to {len(recipients)} Travel Manager(s)."
+    )

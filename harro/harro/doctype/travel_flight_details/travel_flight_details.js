@@ -154,6 +154,32 @@ frappe.ui.form.on("Travel Flight Details", {
                 }
             }
         });
+    },
+    custom_send_cancellation_request: function(frm) {
+        const send = () => {
+            frappe.call({
+                method: "harro.harro.doctype.travel_flight_details.travel_flight_details.send_cancellation_request_email",
+                args: {
+                    source_name: frm.doc.name
+                },
+                freeze: true,
+                freeze_message: __("Sending email..."),
+                callback(r) {
+                    if (!r.exc) {
+                        frappe.show_alert({
+                            message: __("Cancellation Request email sent"),
+                            indicator: "green"
+                        });
+                    }
+                }
+            });
+        };
+
+        if (frm.is_dirty()) {
+            frm.save().then(send);
+        } else {
+            send();
+        }
     }
 });
 
