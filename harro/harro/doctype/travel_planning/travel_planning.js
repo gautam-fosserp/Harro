@@ -203,6 +203,7 @@ const ICON_DELETE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none"
 const TRAVEL_SEGMENT_TYPES = [
     {
         doctype: "Travel Flight Details",
+        single_sector_only: true, 
         html_field: "flight_segments_html",
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_flight_segments",
         add_label: __("Add Sector"),
@@ -250,6 +251,7 @@ const TRAVEL_SEGMENT_TYPES = [
     },
     {
         doctype: "Travel Hotel Booking",
+        single_sector_only: true, 
         html_field: "hotel_segments_html",
         get_method: "harro.harro.doctype.travel_planning.travel_planning.get_hotel_segments",
         add_label: __("Add Sector"),
@@ -350,6 +352,9 @@ const VISA_DIALOG_CONFIG = {
 };
 
 frappe.ui.form.on("Travel Planning", {
+    travel_type(frm) {
+        refresh_open_row_segment_sections(frm);
+    },
     setup: function(frm) {
         frm.set_query("custom_booked_by", "travel_itinerary", function() {
             return {
@@ -1144,6 +1149,17 @@ function render_row_segment_section(frm, grid_row, segment_type, employee, cdn) 
         callback: function (r) {
             const rows = (r.message || []).filter((seg) => seg.travel_itinerary_row === cdn);
 
+            const is_maxed_out = segment_type.single_sector_only
+                && is_single_sector_travel_type(frm)
+                && rows.length >= 1;
+
+            if (is_maxed_out) {
+                $section.find(".tp-add-btn")
+                    .prop("disabled", true)
+                    .css({ opacity: 0.5, cursor: "not-allowed" })
+                    .attr("title", __("Only one entry is allowed for this travel type"));
+            }
+
             if (!rows.length) {
                 $list.html(`<div class="tp-segment-empty">${__("No segments added yet.")}</div>`);
                 return;
@@ -1166,7 +1182,7 @@ function render_row_segment_section(frm, grid_row, segment_type, employee, cdn) 
                     </div>
                 `);
 
-                $stub.find(".tp-view").on("click", () => view_segment(segment_type, seg_row));
+                $stub.find(".tp-view").on("click", () => view_segment(frm, segment_type, seg_row));
                 $stub.find(".tp-edit").on("click", () => edit_segment(frm, segment_type, seg_row));
                 $stub.find(".tp-delete").on("click", () => delete_segment(frm, segment_type, seg_row));
 
@@ -1174,6 +1190,10 @@ function render_row_segment_section(frm, grid_row, segment_type, employee, cdn) 
             });
         },
     });
+}
+
+function is_single_sector_travel_type(frm) {
+    return frm.doc.travel_type === "Domestic" || frm.doc.travel_type === "International";
 }
 
 function open_new_segment(frm, segment_type, employee, cdn) {
@@ -1185,6 +1205,20 @@ function open_new_segment(frm, segment_type, employee, cdn) {
         args: { travel_planning: frm.doc.name },
         callback: function (r) {
             const existing = (r.message || []).filter((seg) => seg.travel_itinerary_row === cdn);
+
+            // Block a second segment for Flight/Hotel on single-sector travel types
+            if (segment_type.single_sector_only && is_single_sector_travel_type(frm) && existing.length >= 1) {
+                frappe.msgprint({
+                    title: __("Not Allowed"),
+                    indicator: "orange",
+                    message: __(
+                        "Only one {0} entry is allowed for travel type {1}.",
+                        [segment_type.section_label, frm.doc.travel_type]
+                    ),
+                });
+                return;
+            }
+
             const next_segment_no = existing.length
                 ? Math.max(...existing.map((seg) => seg.segment_no || 0)) + 1
                 : 1;
@@ -1282,7 +1316,7 @@ frappe.call({
                 </div>
             `);
 
-            $stub.find(".tp-view").on("click", () => view_segment(segment_type, row));
+            $stub.find(".tp-view").on("click", () => view_segment(frm, segment_type, row));
             $stub.find(".tp-edit").on("click", () => edit_segment(frm, segment_type, row));
             $stub.find(".tp-delete").on("click", () => delete_segment(frm, segment_type, row));
 
@@ -1296,7 +1330,7 @@ function view_segment(segment_type, row) {
 frappe.model.with_doctype(segment_type.doctype, () => {
     frappe.call({
         method: "frappe.client.get",
-        args: { doctype: segment_type.doctype, name: row.name },
+        args: { doctype: segment_type.doctype, name: row.name, parent: frm.doc.name },
         callback: function (r) {
             const doc = r.message;
             if (!doc) return;
