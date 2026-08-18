@@ -70,7 +70,8 @@ def create_purchase_invoice(source_name, target_doc=None):
 				"field_map" : {
 					"name" : "travel_insurance_application_details",
 					"vendor_name": "supplier",
-					"vendor_invoice": "custom_supplier_invoice"
+					"vendor_invoice": "custom_supplier_invoice",
+					"custom_invoice_number": "bill_no"
 				},
 				"postprocess": add_item
 			},

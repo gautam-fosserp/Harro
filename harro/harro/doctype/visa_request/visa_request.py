@@ -77,7 +77,8 @@ def create_purchase_invoice(source_name, target_doc=None):
 				"field_map" : {
 					"name" : "visa_request",
 					"custom_vendor_name": "supplier",
-					"custom_vendor_invoice": "custom_supplier_invoice"
+					"custom_vendor_invoice": "custom_supplier_invoice",
+					"custom_supplier_invoice_no": "bill_no"
 				},
 				"postprocess": add_item
 			},
