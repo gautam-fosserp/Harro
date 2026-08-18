@@ -192,7 +192,7 @@ function send_reschedule_ticket(frm, request_type) {
     const label = request_type === 'first' ? 'First' : 'second';
     
     frappe.confirm(
-        `Send ${label} Rescheduling Request email to the Travel Desk?`,
+        `Send ${label} Rescheduling ticket to the traveller ?`,
         function() {
             frappe.call({
                 method: 'harro.harro.doctype.travel_flight_details.travel_flight_details.send_reschedule_ticket',
