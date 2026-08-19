@@ -131,74 +131,51 @@ def send_flight_booking_emails(docname):
             # mark this row so it's not emailed again on a future transition
             row.db_set("flight_booking_email_sent", 1)
 
-        # ── Email to Requestor
-        # if doc.custom_requestor_contact_email:
-        #     travel_request_link = f"""<a href="/app/travel-request/{row.travel_request}">{row.travel_request}</a>"""
-
-        #     frappe.sendmail(
-        #         recipients=[doc.custom_requestor_contact_email],
-        #         subject=f"Flight Ticket has been booked for {row.employee_name} against Travel Request {row.travel_request}",
-        #         message=f"""
-        #             Hello {requestor_name},<br><br>
-
-        #             This is to inform you that the Flight ticket has been issued for {row.employee_name}
-        #             against the travel request {travel_request_link}, and the travel documents are
-        #             attached for your reference.<br><br>
-
-        #             <b>Travel Planning:</b> {doc.name}<br>
-        #             <b>Employee:</b> {row.employee_name}<br><br>
-
-        #             Regards,<br>
-        #             <b>Travel Team</b>
-        #         """,
-        #         attachments=attachments,
-        #         reference_doctype=doc.doctype,
-        #         reference_name=doc.name
-        #     )
 
     # Additional flight segments (Travel Flight Details) — one email per segment,
     # mirroring the primary itinerary row's email above.
-    segment_attachment_fields = [
-        "custom_flight_bill",
-        "custom_return_flight_ticket",
-        "custom_flight_invoice_attachment",
-        "custom_return_flight_invoice_attachment",
-    ]
-    for segment in frappe.get_all(
-        "Travel Flight Details",
-        filters={"travel_planning": docname},
-        fields=["name", "employee", "contact_email"] + segment_attachment_fields,
-    ):
-        if not segment.contact_email:
-            continue
 
-        employee_name = frappe.db.get_value("Employee", segment.employee, "employee_name") or segment.employee
-        attachments = [
-            {"file_url": segment.get(field)}
-            for field in segment_attachment_fields
-            if segment.get(field)
-        ]
-        travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
+    # segment_attachment_fields = [
+    #     "custom_flight_bill",
+    #     "custom_return_flight_ticket",
+    #     "custom_flight_invoice_attachment",
+    #     "custom_return_flight_invoice_attachment",
+    # ]
+    # for segment in frappe.get_all(
+    #     "Travel Flight Details",
+    #     filters={"travel_planning": docname},
+    #     fields=["name", "employee", "contact_email"] + segment_attachment_fields,
+    # ):
+    #     if not segment.contact_email:
+    #         continue
 
-        frappe.sendmail(
-            recipients=[segment.contact_email],
-            subject=f"{doc.name}: Ticket has been booked for {employee_name}",
-            message=f"""
-                Hello {employee_name},<br><br>
+    #     employee_name = frappe.db.get_value("Employee", segment.employee, "employee_name") or segment.employee
+    #     attachments = [
+    #         {"file_url": segment.get(field)}
+    #         for field in segment_attachment_fields
+    #         if segment.get(field)
+    #     ]
+    #     travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
 
-                Your flight ticket has been booked.
-                Please find the ticket attachments below.<br><br>
+    #     frappe.sendmail(
+    #         recipients=[segment.contact_email],
+    #         subject=f"{doc.name}: Ticket has been booked for {employee_name}",
+    #         message=f"""
+    #             Hello {employee_name},<br><br>
 
-                <b>Travel Planning:</b> {travel_planning_link}<br>
-                <b>Employee:</b> {employee_name}<br><br>
+    #             Your flight ticket has been booked.
+    #             Please find the ticket attachments below.<br><br>
 
-                Regards,<br>
-                <b>Travel Team</b>
-            """,
-            attachments=attachments,
-            reference_doctype=doc.doctype,
-            reference_name=doc.name
-        )
+    #             <b>Travel Planning:</b> {travel_planning_link}<br>
+    #             <b>Employee:</b> {employee_name}<br><br>
+
+    #             Regards,<br>
+    #             <b>Travel Team</b>
+    #         """,
+    #         attachments=attachments,
+    #         reference_doctype=doc.doctype,
+    #         reference_name=doc.name
+    #     )
 
 
 def send_hotel_booking_emails(docname):
