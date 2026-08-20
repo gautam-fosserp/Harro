@@ -1061,6 +1061,7 @@ frappe.ui.form.on("Travel Planning Employee Details" , {
     },
     custom_employee(frm, cdt, cdn) {
         setTimeout(() => refresh_open_row_heading(frm, cdn), 300);
+        handle_employee_selected(frm, cdt, cdn);
     },
     custom_harro_claim(frm, cdt, cdn) {
         enforce_exclusive_claim_status(frm, cdt, cdn, "custom_harro_claim");
@@ -1074,10 +1075,24 @@ frappe.ui.form.on("Travel Planning Employee Details" , {
     custom_yet_to_decided(frm, cdt, cdn) {
         enforce_exclusive_claim_status(frm, cdt, cdn, "custom_yet_to_decided");
     },
+    custom_send_documents: function(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
 
-    custom_employee(frm, cdt, cdn) {
-        handle_employee_selected(frm, cdt, cdn);
-    },
+        frappe.call({
+            method: "harro.harro.doctype.travel_planning.travel_planning.send_documents",
+            args: {
+                docname: frm.doc.name,
+                itinerary_row: cdn   // <-- tell the server which row triggered it
+            },
+            freeze: true,
+            freeze_message: "Sending email...",
+            callback: function(r) {
+                if (!r.exc) {
+                    frappe.show_alert({message: 'Document email sent', indicator: 'green'});
+                }
+            }
+        });
+    }
 });
 
 function add_segment_buttons(frm, cdt, cdn) {
@@ -1409,7 +1424,7 @@ function enforce_exclusive_claim_status(frm, cdt, cdn, changed_field) {
  * No-op for non-International travel or incomplete rows.
  */
 function handle_employee_selected(frm, cdt, cdn) {
-	if (frm.doc.travel_type !== "International") return;
+	if (frm.doc.travel_type !== "International" && frm.doc.travel_type !=="Multi-Sector(International)") return;
 
 	const row = locals[cdt][cdn];
 	const employee = row.custom_employee;
@@ -1422,7 +1437,9 @@ function handle_employee_selected(frm, cdt, cdn) {
 		callback(r) {
 			if (!r.message) return;
 			const { emp, visa, case_type } = resolve_visa_status(r.message, country);
-			show_visa_dialog(frm, emp, country, visa, case_type);
+			maybe_mark_single_entry_visa_utilized(frm, emp, country, visa).then(() => {
+				show_visa_dialog(frm, emp, country, visa, case_type);
+			});
 		},
 		error(err) {
 			frappe.msgprint({
@@ -1433,6 +1450,27 @@ function handle_employee_selected(frm, cdt, cdn) {
 			console.error("Employee visa lookup failed:", err);
 		},
 	});
+}
+
+function maybe_mark_single_entry_visa_utilized(frm, emp, country, visa) {
+    if (!visa) return Promise.resolve();
+    if ((visa.entry || " ").trim().toLowerCase() !== "single") return Promise.resolve();
+    if (frm.doc.workflow_state !== "Waiting for Travel Manager to Update Travel Plan") return Promise.resolve();
+    if (visa.custom_visa_utilized) return Promise.resolve();
+
+    return frappe.call({
+        method: "harro.harro.doctype.travel_planning.travel_planning.mark_visa_utilized",
+        args: {
+            employee: emp.name,
+            country: country,
+            travel_planning: frm.doc.name
+        },
+    }).then(() => {
+        visa.custom_visa_utilized = 1;
+        visa.custom_travel_planning = frm.doc.name;
+    }).catch((err) => {
+        console.error("Failed to mark visa as utilized:", err);
+    });
 }
 
 /** Determines visa/valid/expired/not_found state for the given Employee + Country. */
@@ -1478,6 +1516,11 @@ function show_visa_dialog(frm, emp, country, visa, case_type) {
 		{ fieldtype: "Section Break" },
 		{ fieldtype: "Data", fieldname: "f_status", label: __("Status"), default: config.status_text, read_only: 1 }
 	);
+    
+    // warning slot, only added when this visa has been utilized
+    if (visa && visa.custom_visa_utilized) {
+        fields.push({fieldtype: "HTML", fieldname: "f_visa_utilized_warning"});
+    }
 
 	const dialog_opts = {
 		title: __("Visa Status"),
@@ -1506,6 +1549,21 @@ function show_visa_dialog(frm, emp, country, visa, case_type) {
 	d.show();
 
 	style_visa_status_field(d, config);
+
+    // render the warning banner
+    if (visa && visa.custom_visa_utilized) {
+        const prev_trip = visa.custom_travel_planning;
+        const trip_link = prev_trip
+			? `<a href="/app/travel-planning/${prev_trip}" target="_blank" style="color:#c0392b;text-decoration:underline;">${prev_trip}</a>`
+			: __("a previous trip");
+
+		d.fields_dict.f_visa_utilized_warning.$wrapper.html(`
+			<div style="background:#f8d7da;border:1px solid #c0392b;color:#c0392b;
+				font-weight:600;padding:10px 14px;border-radius:10px;">
+				⚠ ${__("This is a Single Entry visa and has already been utilized in")} ${trip_link}.
+			</div>
+		`);
+	}
 }
 
 /**

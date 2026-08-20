@@ -80,102 +80,49 @@ class TravelPlanning(Document):
 
 def send_flight_booking_emails(docname):
     doc = frappe.get_doc("Travel Planning", docname)
-
-    flight_attachment_fields = [
-        "custom_evisa",
-        "custom_travel_insurance",
+    # Additional flight segments (Travel Flight Details) — one email per segment,
+    # mirroring the primary itinerary row's email.
+    segment_attachment_fields = [
         "custom_flight_bill",
         "custom_return_flight_ticket",
-        "custom_round_trip_ticket",
+        "custom_flight_invoice_attachment",
+        "custom_return_flight_invoice_attachment",
     ]
-
-    requestor_name = frappe.db.get_value("Employee", doc.travel_requestor, "employee_name")
-
-    for row in doc.travel_itinerary:
-        # skip rows that already got this email
-        if row.get("flight_booking_email_sent"):
+    for segment in frappe.get_all(
+        "Travel Flight Details",
+        filters={"travel_planning": docname},
+        fields=["name", "employee", "contact_email"] + segment_attachment_fields,
+    ):
+        if not segment.contact_email:
             continue
 
-        if not row.custom_contact_email:
-            continue
-
+        employee_name = frappe.db.get_value("Employee", segment.employee, "employee_name") or segment.employee
         attachments = [
-            {"file_url": row.get(field)}
-            for field in flight_attachment_fields
-            if row.get(field)
+            {"file_url": segment.get(field)}
+            for field in segment_attachment_fields
+            if segment.get(field)
         ]
         travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
 
-        # ── Email to Employee 
-        if row.custom_contact_email:
-            frappe.sendmail(
-                recipients=[row.custom_contact_email],
-                subject=f"{doc.name}: Flight Ticket has been booked for {row.employee_name}",
-                message=f"""
-                    Hello {row.employee_name},<br><br>
+        frappe.sendmail(
+            recipients=[segment.contact_email],
+            subject=f"{doc.name}: Ticket has been booked for {employee_name}",
+            message=f"""
+                Hello {employee_name},<br><br>
 
-                    Your flight ticket has been booked.
-                    Please find the ticket attachments below.<br><br>
+                Your flight ticket has been booked.
+                Please find the ticket attachments below.<br><br>
 
-                    <b>Travel Planning:</b> {travel_planning_link}<br>
-                    <b>Employee:</b> {row.employee_name}<br><br>
+                <b>Travel Planning:</b> {travel_planning_link}<br>
+                <b>Employee:</b> {employee_name}<br><br>
 
-                    Regards,<br>
-                    <b>Travel Team</b>
-                """,
-                attachments=attachments,
-                reference_doctype=doc.doctype,
-                reference_name=doc.name
-            )
-
-            # mark this row so it's not emailed again on a future transition
-            row.db_set("flight_booking_email_sent", 1)
-
-
-    # Additional flight segments (Travel Flight Details) — one email per segment,
-    # mirroring the primary itinerary row's email above.
-
-    # segment_attachment_fields = [
-    #     "custom_flight_bill",
-    #     "custom_return_flight_ticket",
-    #     "custom_flight_invoice_attachment",
-    #     "custom_return_flight_invoice_attachment",
-    # ]
-    # for segment in frappe.get_all(
-    #     "Travel Flight Details",
-    #     filters={"travel_planning": docname},
-    #     fields=["name", "employee", "contact_email"] + segment_attachment_fields,
-    # ):
-    #     if not segment.contact_email:
-    #         continue
-
-    #     employee_name = frappe.db.get_value("Employee", segment.employee, "employee_name") or segment.employee
-    #     attachments = [
-    #         {"file_url": segment.get(field)}
-    #         for field in segment_attachment_fields
-    #         if segment.get(field)
-    #     ]
-    #     travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
-
-    #     frappe.sendmail(
-    #         recipients=[segment.contact_email],
-    #         subject=f"{doc.name}: Ticket has been booked for {employee_name}",
-    #         message=f"""
-    #             Hello {employee_name},<br><br>
-
-    #             Your flight ticket has been booked.
-    #             Please find the ticket attachments below.<br><br>
-
-    #             <b>Travel Planning:</b> {travel_planning_link}<br>
-    #             <b>Employee:</b> {employee_name}<br><br>
-
-    #             Regards,<br>
-    #             <b>Travel Team</b>
-    #         """,
-    #         attachments=attachments,
-    #         reference_doctype=doc.doctype,
-    #         reference_name=doc.name
-    #     )
+                Regards,<br>
+                <b>Travel Team</b>
+            """,
+            attachments=attachments,
+            reference_doctype=doc.doctype,
+            reference_name=doc.name
+        )
 
 
 def send_hotel_booking_emails(docname):
@@ -1246,3 +1193,122 @@ def get_travel_managers(doctype, txt, searchfield, start, page_len, filters):
         "start": start,
         "page_len": page_len
     })
+
+@frappe.whitelist()
+def send_documents(docname, itinerary_row=None):
+    doc = frappe.get_doc("Travel Planning", docname)
+
+    flight_attachment_fields = [
+        "custom_evisa",
+        "custom_travel_insurance",
+        "custom_attach1",
+        "custom_attachment1"
+    ]
+
+    rows = [r for r in doc.travel_itinerary if not itinerary_row or r.name == itinerary_row]
+
+    for row in rows:
+        # skip rows that already got this email
+        if row.get("flight_booking_email_sent"):
+            frappe.msgprint(f"Email already sent for {row.employee_name or row.name}")
+            continue
+
+        if not row.custom_contact_email:
+            frappe.msgprint(f"No contact email set for {row.employee_name or row.name}")
+            continue
+
+        attachments = [
+            {"file_url": row.get(field)}
+            for field in flight_attachment_fields
+            if row.get(field)
+        ]
+
+        attachment_count = len(attachments)
+        attachment_label = "document" if attachment_count == 1 else "documents"
+
+        ir_activation_block = ""
+        if row.get("custom_ir_activation_done"):
+            ir_activation_block = """
+                    <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 16px 20px; margin: 0 0 24px 0;">
+                        <p style="margin: 0; color: #065f46; font-size: 14px; font-weight: 500;">
+                            Please note that your IR activation has been completed.
+                        </p>
+                    </div>
+            """
+
+
+        # ── Email to Employee
+        message = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f5f7; padding: 24px;">
+            <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 32px 32px 28px 32px; text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">✈️</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 600;">
+                        Your Travel Documents Are Ready
+                    </h1>
+                </div>
+
+                <!-- Body -->
+                <div style="padding: 32px;">
+                    <p style="margin: 0 0 16px 0; color: #1f2937; font-size: 15px; line-height: 1.6;">
+                        Dear <strong>{row.employee_name}</strong>,
+                    </p>
+
+                    <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                        Please find attached your travel documents for your upcoming trip.
+                    </p>
+
+                    <!-- Attachment summary card -->
+                    <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px 20px; margin: 0 0 24px 0;">
+                        <p style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 500;">
+                            📎 {attachment_count} {attachment_label} attached
+                        </p>
+                    </div>
+                    {ir_activation_block}
+                    <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                        Kindly review the attachments and let us know if you require any further assistance.
+                    </p>
+
+                    <p style="margin: 0; color: #1f2937; font-size: 15px; line-height: 1.6;">
+                        Best Regards,<br>
+                        <strong>Travel Team</strong>
+                    </p>
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #f9fafb; padding: 20px 32px; border-top: 1px solid #e5e7eb; text-align: center;">
+                    <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                        This is an automated message regarding travel plan <strong>{doc.name}</strong>.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+        """
+
+        frappe.sendmail(
+            recipients=[row.custom_contact_email],
+            subject=f"{doc.name}: Travel Documents for your upcoming trip",
+            message=message,
+            attachments=attachments,
+            reference_doctype=doc.doctype,
+            reference_name=doc.name
+        )
+
+        row.db_set("flight_booking_email_sent", 1)
+
+
+
+@frappe.whitelist()
+def mark_visa_utilized(employee, country, travel_planning):
+    emp = frappe.get_doc("Employee", employee)
+
+    for row in emp.custom_visa_details:
+        if (row.visa_country or "").strip().lower() == (country or "").strip().lower():
+            if not row.custom_visa_utilized:
+                row.db_set("custom_visa_utilized", 1, update_modified=False)
+                row.db_set("custom_travel_planning", travel_planning, update_modified=False)
+            return {"updated": True, "travel_planning": row.custom_travel_planning}
+    return {"updated": False}
