@@ -77,6 +77,139 @@ class TravelPlanning(Document):
                 enqueue_after_commit=True,
                 docname=self.name
             )
+        elif self.workflow_state == "Flight and Hotel Ticket Booked":
+            frappe.enqueue(
+                method="harro.harro.doctype.travel_planning.travel_planning.send_combined_segment_emails",
+                queue="default",
+                enqueue_after_commit=True,
+                docname=self.name
+            )
+
+def send_combined_segment_emails(docname):
+    doc = frappe.get_doc("Travel Planning", docname)
+
+    flight_attachment_fields = [
+        "custom_flight_bill",
+        "custom_return_flight_ticket"
+    ]
+    hotel_attachment_fields = ["custom_taxi_bill"]
+
+    flight_rows = frappe.get_all(
+        "Travel Flight Details",
+        filters={"travel_planning": docname},
+        fields=["name", "employee", "travel_itinerary_row", "segment_no", "contact_email",
+                "custom_onward_travel_from", "custom_onward_travel_to", "custom_onward_travel_date",
+                "custom_return_travel_from", "custom_return_travel_to", "custom_return_travel_date",
+                "custom_flight_booking_status"] + flight_attachment_fields,
+    )
+    hotel_rows = frappe.get_all(
+        "Travel Hotel Booking",
+        filters={"travel_planning": docname},
+        fields=["name", "employee", "travel_itinerary_row", "segment_no", "contact_email",
+                "custom_hotel_name", "check_in_date", "check_out_date",
+                "custom_hotel_booking_status", "custom_payment_terms_for_hotel_booking"]
+               + hotel_attachment_fields
+               + ["custom_laundry_facility", "custom_laundry_facility_remarks",
+                  "custom_discount_on_meal", "custom_meal_discount_remarks",
+                  "custom_airport_transport", "custom_airport_transport_remarks",
+                  "custom_break_fast", "custom_break_fast_remarks",
+                  "custom_wifi", "custom_wifi_remarks"],
+    )
+    def group_by_row(rows):
+        grouped = {}
+        for r in rows:
+            grouped.setdefault(r.travel_itinerary_row, {})[r.segment_no] = r
+        return grouped
+
+    flights_by_row = group_by_row(flight_rows)
+    hotels_by_row = group_by_row(hotel_rows)
+
+    all_rows = set(flights_by_row) | set(hotels_by_row)
+    travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
+
+    for itinerary_row in all_rows:
+        f_segments = flights_by_row.get(itinerary_row, {})
+        h_segments = hotels_by_row.get(itinerary_row, {})
+        segment_numbers = sorted(set(f_segments) | set(h_segments))
+
+        for seg_no in segment_numbers:
+            flight = f_segments.get(seg_no)
+            hotel = h_segments.get(seg_no)
+
+            # Skip if this exact pairing was already emailed
+            # if flight and flight.get("custom_booking_confirmation_email_sent"):
+            #     flight = flight if not flight.get("custom_booking_confirmation_email_sent") else None
+            # already_sent = (
+            #     (not flight or frappe.db.get_value("Travel Flight Details", flight.name, "custom_booking_confirmation_email_sent"))
+            #     and (not hotel or frappe.db.get_value("Travel Hotel Booking", hotel.name, "custom_booking_confirmation_email_sent"))
+            # )
+            # if already_sent:
+            #     continue
+
+            contact_email = (flight and flight.contact_email) or (hotel and hotel.contact_email)
+            if not contact_email:
+                continue
+
+            employee = (flight and flight.employee) or (hotel and hotel.employee)
+            employee_name = frappe.db.get_value("Employee", employee, "employee_name") or employee
+
+            attachments = []
+            flight_block = ""
+            if flight:
+                attachments += [
+                    {"file_url": flight.get(f)} for f in flight_attachment_fields if flight.get(f)
+                ]
+                flight_block = f"""
+                    <b>Flight:</b><br>
+                    Onward: {flight.custom_onward_travel_from or '-'} → {flight.custom_onward_travel_to or '-'}
+                    ({flight.custom_onward_travel_date or '-'})<br>
+                    Return: {flight.custom_return_travel_from or '-'} → {flight.custom_return_travel_to or '-'}
+                    ({flight.custom_return_travel_date or '-'})<br>
+                    Status: {flight.custom_flight_booking_status or '-'}<br><br>
+                """
+
+            hotel_block = ""
+            if hotel:
+                attachments += [
+                    {"file_url": hotel.get(f)} for f in hotel_attachment_fields if hotel.get(f)
+                ]
+                payment_terms_html = _build_payment_terms_html(hotel)
+                preferences_html = _build_preferences_html(hotel)
+                hotel_block = f"""
+                    <b>Hotel:</b> {hotel.custom_hotel_name or '-'}<br>
+                    Check-in: {hotel.check_in_date or '-'} → Check-out: {hotel.check_out_date or '-'}<br>
+                    Status: {hotel.custom_hotel_booking_status or '-'}<br><br>
+                    {payment_terms_html}
+                    {preferences_html}
+                """
+
+            frappe.sendmail(
+                recipients=[contact_email],
+                subject=f"{doc.name}: Flight & Hotel Booking Confirmation for {employee_name} (Segment {seg_no})",
+                message=f"""
+                    Hello {employee_name},<br><br>
+
+                    Your flight and hotel booking for segment {seg_no} has been confirmed.
+                    Please find the attachments below.<br><br>
+
+                    <b>Travel Planning:</b> {travel_planning_link}<br>
+                    <b>Employee:</b> {employee_name}<br><br>
+
+                    {flight_block}
+                    {hotel_block}
+
+                    Regards,<br>
+                    <b>Travel Team</b>
+                """,
+                attachments=attachments,
+                reference_doctype=doc.doctype,
+                reference_name=doc.name,
+            )
+
+            # if flight:
+            #     frappe.db.set_value("Travel Flight Details", flight.name, "custom_booking_confirmation_email_sent", 1)
+            # if hotel:
+            #     frappe.db.set_value("Travel Hotel Booking", hotel.name, "custom_booking_confirmation_email_sent", 1)
 
 def send_flight_booking_emails(docname):
     doc = frappe.get_doc("Travel Planning", docname)
