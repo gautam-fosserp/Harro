@@ -163,8 +163,6 @@ def send_credit_note_email(docname):
 
     if not doc.custom_credit_note:
         frappe.throw("Please attach the Credit Note before sending the email.")
-    if not doc.contact_email:
-        frappe.throw("Employee Contact Email is missing on this record.")
 
     file_doc = frappe.get_doc("File", {"file_url": doc.custom_credit_note})
 
@@ -179,9 +177,33 @@ def send_credit_note_email(docname):
         Please find the credit note attached for your reference.<br><br>
         Regards,<br>Travel Manager
     """
+    # get all enabled user having role Accounts Manager
+    travel_managers = frappe.get_all(
+        "Has Role",
+        filters={
+            "role": "Accounts Manager",
+            "parenttype": "User"
+        },
+        fields=["parent"]
+    )
+
+    recipients = []
+
+    for row in travel_managers:
+        user = frappe.get_value(
+            "User",
+            row.parent,
+            ['emal','enabled'],
+            as_dict=True
+        )
+
+        if user and user.enabled and user.email:
+            recipients.append(user.email)
+    if not recipients:
+        frappe.throw("No enabled users found with the Accounts Manager role.")
 
     frappe.sendmail(
-        recipients=[doc.contact_email],
+        recipients=recipients,
         subject=subject,
         message=message,
         attachments=[{"fid": file_doc.name}],

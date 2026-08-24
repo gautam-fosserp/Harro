@@ -1437,9 +1437,8 @@ function handle_employee_selected(frm, cdt, cdn) {
 		callback(r) {
 			if (!r.message) return;
 			const { emp, visa, case_type } = resolve_visa_status(r.message, country);
-			maybe_mark_single_entry_visa_utilized(frm, emp, country, visa).then(() => {
-				show_visa_dialog(frm, emp, country, visa, case_type);
-			});
+			show_visa_dialog(frm, emp, country, visa, case_type);
+			
 		},
 		error(err) {
 			frappe.msgprint({
@@ -1450,29 +1449,6 @@ function handle_employee_selected(frm, cdt, cdn) {
 			console.error("Employee visa lookup failed:", err);
 		},
 	});
-}
-
-function maybe_mark_single_entry_visa_utilized(frm, emp, country, visa) {
-    if (!visa) return Promise.resolve();
-    if ((visa.entry || " ").trim().toLowerCase() !== "single") return Promise.resolve();
-    if (frm.doc.workflow_state !== "Waiting for Travel Manager to Update Travel Plan") return Promise.resolve();
-    if (visa.custom_visa_utilized) return Promise.resolve();
-
-    return frappe.call({
-        method: "harro.harro.doctype.travel_planning.travel_planning.mark_visa_utilized",
-        args: {
-            employee: emp.name,
-            country: country,
-            travel_planning: frm.doc.name
-        },
-    }).then(() => {
-        if (r.message && r.message.updated) {
-            visa.custom_visa_utilized = 1;
-            visa.custom_travel_planning = frm.doc.name;
-        }
-    }).catch((err) => {
-        console.error("Failed to mark visa as utilized:", err);
-    });
 }
 
 /** Determines visa/valid/expired/not_found state for the given Employee + Country. */

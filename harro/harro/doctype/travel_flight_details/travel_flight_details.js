@@ -122,7 +122,7 @@ frappe.ui.form.on("Travel Flight Details", {
     custom_seat_charges: function(frm) {
         calculate_total_flight_cost(frm);
     },
-    baggage_coast: function(frm) {
+    custom_baggage_cost: function(frm) {
         calculate_total_flight_cost(frm);
     },
     custom_onward_flight_cost_as_per_invoice: function(frm) {
@@ -360,7 +360,7 @@ function calculate_total_flight_cost(frm) {
     const onward_flight_cost = flt(frm.doc.custom_onward_flight_cost_as_per_invoice || 0);
     const return_flight_cost = flt(frm.doc.custom_return_flight_cost_as_per_invoice || 0);
     const seat_charge = flt(frm.doc.custom_seat_charges || 0);
-    const baggage_cost = flt(frm.doc.baggage_coast || 0);
+    const baggage_cost = flt(frm.doc.custom_baggage_cost || 0);
     const round_trip_cost = flt(frm.doc.custom_round_trip_cost_as_per_invoice || 0);
 
     const total_flight_cost = (onward_flight_cost+return_flight_cost+seat_charge+baggage_cost+round_trip_cost);
