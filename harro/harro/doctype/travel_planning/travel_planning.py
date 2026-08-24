@@ -161,11 +161,8 @@ def send_combined_segment_emails(docname):
                 ]
                 flight_block = f"""
                     <b>Flight:</b><br>
-                    Onward: {flight.custom_onward_travel_from or '-'} → {flight.custom_onward_travel_to or '-'}
-                    ({flight.custom_onward_travel_date or '-'})<br>
-                    Return: {flight.custom_return_travel_from or '-'} → {flight.custom_return_travel_to or '-'}
-                    ({flight.custom_return_travel_date or '-'})<br>
-                    Status: {flight.custom_flight_booking_status or '-'}<br><br>
+                    Onward: {flight.custom_onward_travel_from or '-'} → {flight.custom_onward_travel_to or '-'}<br>
+                    Return: {flight.custom_return_travel_from or '-'} → {flight.custom_return_travel_to or '-'}<br>
                 """
 
             hotel_block = ""

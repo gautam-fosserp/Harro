@@ -1466,8 +1466,10 @@ function maybe_mark_single_entry_visa_utilized(frm, emp, country, visa) {
             travel_planning: frm.doc.name
         },
     }).then(() => {
-        visa.custom_visa_utilized = 1;
-        visa.custom_travel_planning = frm.doc.name;
+        if (r.message && r.message.updated) {
+            visa.custom_visa_utilized = 1;
+            visa.custom_travel_planning = frm.doc.name;
+        }
     }).catch((err) => {
         console.error("Failed to mark visa as utilized:", err);
     });
