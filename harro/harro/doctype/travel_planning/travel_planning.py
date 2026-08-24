@@ -174,16 +174,37 @@ def send_combined_segment_emails(docname):
             employee_name = frappe.db.get_value("Employee", employee, "employee_name") or employee
 
             attachments = []
+            # flight_block = ""
+            # if flight:
+            #     attachments += [
+            #         {"file_url": flight.get(f)} for f in flight_attachment_fields if flight.get(f)
+            #     ]
+            #     flight_block = f"""
+            #         <b>Flight:</b><br>
+            #         Onward: {flight.custom_onward_travel_from or '-'} → {flight.custom_onward_travel_to or '-'}<br>
+            #         Return: {flight.custom_return_travel_from or '-'} → {flight.custom_return_travel_to or '-'}<br>
+            #     """
+
             flight_block = ""
             if flight:
                 attachments += [
                     {"file_url": flight.get(f)} for f in flight_attachment_fields if flight.get(f)
                 ]
-                flight_block = f"""
-                    <b>Flight:</b><br>
-                    Onward: {flight.custom_onward_travel_from or '-'} → {flight.custom_onward_travel_to or '-'}<br>
-                    Return: {flight.custom_return_travel_from or '-'} → {flight.custom_return_travel_to or '-'}<br>
-                """
+
+                onward_line = ""
+                if flight.custom_onward_travel_from or flight.custom_onward_travel_to:
+                    onward_line = f"Onward: {flight.custom_onward_travel_from or '-'} → {flight.custom_onward_travel_to or '-'}<br>"
+
+                return_line = ""
+                if flight.custom_return_travel_from or flight.custom_return_travel_to:
+                    return_line = f"Return: {flight.custom_return_travel_from or '-'} → {flight.custom_return_travel_to or '-'}<br>"
+
+                if onward_line or return_line:
+                    flight_block = f"""
+                        <b>Flight:</b><br>
+                        {onward_line}
+                        {return_line}
+                    """
 
             hotel_block = ""
             if hotel:
@@ -194,8 +215,7 @@ def send_combined_segment_emails(docname):
                 preferences_html = _build_preferences_html(hotel)
                 hotel_block = f"""
                     <b>Hotel:</b> {hotel.custom_hotel_name or '-'}<br>
-                    Check-in: {hotel.check_in_date or '-'} → Check-out: {hotel.check_out_date or '-'}<br>
-                    Status: {hotel.custom_hotel_booking_status or '-'}<br><br>
+                    Check-in: {hotel.check_in_date or '-'} → Check-out: {hotel.check_out_date or '-'}<br><br>
                     {payment_terms_html}
                     {preferences_html}
                 """
@@ -237,6 +257,7 @@ def send_flight_booking_emails(docname):
         "custom_return_flight_ticket",
         "custom_flight_invoice_attachment",
         "custom_return_flight_invoice_attachment",
+        "custom_round_trip_ticket"
     ]
     for segment in frappe.get_all(
         "Travel Flight Details",
