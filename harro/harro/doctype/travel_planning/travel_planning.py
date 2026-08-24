@@ -11,6 +11,26 @@ class TravelPlanning(Document):
     def on_update(self):
         self.send_ticket_booked_emails()
         self.assign_travel_plan_to_employees()
+        self.mark_single_entry_visas_utilized()
+
+    def mark_single_entry_visas_utilized(self):
+        if self.is_new():
+            return
+
+        old_doc = self.get_doc_before_save()
+        if not old_doc or old_doc.workflow_state == self.workflow_state:
+            return
+        if self.workflow_state != "Waiting for Travel Manager to Update Travel Plan":
+            return
+        if self.travel_type not in ("International", "Multi-Sector(International)"):
+            return
+        if not self.custom_country:
+            return
+
+        for row in self.travel_itinerary:
+            if not row.custom_employee:
+                continue
+            mark_visa_utilized(row.custom_employee, self.custom_country, self.name)
 
     def assign_travel_plan_to_employees(self):
         if self.is_new():
@@ -257,84 +277,59 @@ def send_flight_booking_emails(docname):
 
 def send_hotel_booking_emails(docname):
     doc = frappe.get_doc("Travel Planning", docname)
-
-    hotel_attachment_fields = [
-        "custom_taxi_bill",
-    ]
     travel_planning_link = f"""<a href="{frappe.utils.get_url_to_form(doc.doctype, doc.name)}">{doc.name}</a>"""
 
-    requestor_name = frappe.db.get_value("Employee", doc.travel_requestor, "employee_name")
+    # hotel_attachment_fields = [
+    #     "custom_taxi_bill",
+    # ]
 
-    for row in doc.travel_itinerary:
-        # skip rows that already got this email
-        if row.get("hotel_booking_email_sent"):
-            continue
+    # requestor_name = frappe.db.get_value("Employee", doc.travel_requestor, "employee_name")
 
-        if not row.get("custom_contact_email"):
-            continue
+    # for row in doc.travel_itinerary:
+    #     # skip rows that already got this email
+    #     if row.get("hotel_booking_email_sent"):
+    #         continue
 
-        attachments = [
-            {"file_url": row.get(field)}
-            for field in hotel_attachment_fields
-            if row.get(field)
-        ]
+    #     if not row.get("custom_contact_email"):
+    #         continue
 
-        # Build travel preferences block (only if the field exists on the row)
-        preferences_html = _build_preferences_html(row)
-        payment_terms_html = _build_payment_terms_html(row)
+    #     attachments = [
+    #         {"file_url": row.get(field)}
+    #         for field in hotel_attachment_fields
+    #         if row.get(field)
+    #     ]
 
-        # ── Email to Employee
-        if row.custom_contact_email:
-            frappe.sendmail(
-                recipients=[row.custom_contact_email],
-                subject=f"{doc.name}: Hotel has been booked for {row.employee_name}",
-                message=f"""
-                    Hello {row.employee_name},<br><br>
+    #     # Build travel preferences block (only if the field exists on the row)
+    #     preferences_html = _build_preferences_html(row)
+    #     payment_terms_html = _build_payment_terms_html(row)
 
-                    Your hotel has been booked.
-                    Please find the hotel voucher attachments below.<br><br>
+    #     # ── Email to Employee
+    #     if row.custom_contact_email:
+    #         frappe.sendmail(
+    #             recipients=[row.custom_contact_email],
+    #             subject=f"{doc.name}: Hotel has been booked for {row.employee_name}",
+    #             message=f"""
+    #                 Hello {row.employee_name},<br><br>
 
-                    <b>Travel Planning:</b> {travel_planning_link}<br>
-                    <b>Employee:</b> {row.employee_name}<br><br>
+    #                 Your hotel has been booked.
+    #                 Please find the hotel voucher attachments below.<br><br>
 
-                    {payment_terms_html}
+    #                 <b>Travel Planning:</b> {travel_planning_link}<br>
+    #                 <b>Employee:</b> {row.employee_name}<br><br>
 
-                    {preferences_html}
+    #                 {payment_terms_html}
 
-                    Regards,<br>
-                    <b>Travel Team</b>
-                """,
-                attachments=attachments,
-                reference_doctype=doc.doctype,
-                reference_name=doc.name
-            )
+    #                 {preferences_html}
+
+    #                 Regards,<br>
+    #                 <b>Travel Team</b>
+    #             """,
+    #             attachments=attachments,
+    #             reference_doctype=doc.doctype,
+    #             reference_name=doc.name
+    #         )
             
-            row.db_set("hotel_booking_email_sent", 1)
-
-        # ── Email to Requestor 
-        # if doc.custom_requestor_contact_email:
-        #     frappe.sendmail(
-        #         recipients=[doc.custom_requestor_contact_email],
-        #         subject=f"Hotel has been booked for {row.employee_name} against Travel Request {row.travel_request}",
-        #         message=f"""
-        #             Hello {requestor_name},<br><br>
-
-        #             This is to inform you that the hotel booking has been confirmed for {row.employee_name}
-        #             against Travel Request {row.travel_request}. Please find the hotel voucher attached
-        #             for your reference.<br><br>
-
-        #             <b>Travel Planning:</b> {doc.name}<br>
-        #             <b>Employee:</b> {row.employee_name}<br><br>
-
-        #             {preferences_html}
-
-        #             Regards,<br>
-        #             <b>Travel Team</b>
-        #         """,
-        #         attachments=attachments,
-        #         reference_doctype=doc.doctype,
-        #         reference_name=doc.name
-        #     )
+    #         row.db_set("hotel_booking_email_sent", 1)
 
     # Additional hotel segments (Travel Hotel Booking) — one email per segment,
     # mirroring the primary itinerary row's email above.
