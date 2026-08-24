@@ -226,7 +226,7 @@ def send_reschedule_request(docname, request_type):
     if request_type == "first":
         subject = f"Travel Planning {doc.travel_planning} - First Rescheduling Request for {doc.employee_name}"
         message = f"""
-            Dear Travel Mannager,<br><br>
+            Dear Travel Manager,<br><br>
             This is to inform you that a first rescheduling request has been updated for <b>{doc.employee_name}</b> under Travel Planning {doc.travel_planning}.<br>
             Kindly review the rescheduled travel details and proceed with the necessary actions.<br>
             <a href="{travel_planning_url}">Open Travel Planning</a><br><br>
