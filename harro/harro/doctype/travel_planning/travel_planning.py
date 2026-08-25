@@ -120,14 +120,15 @@ def send_combined_segment_emails(docname):
         fields=["name", "employee", "travel_itinerary_row", "segment_no", "contact_email",
                 "custom_onward_travel_from", "custom_onward_travel_to", "custom_onward_travel_date",
                 "custom_return_travel_from", "custom_return_travel_to", "custom_return_travel_date",
-                "custom_flight_booking_status"] + flight_attachment_fields,
+                "custom_flight_booking_status", "custom_booking_confirmation_email_sent"] + flight_attachment_fields,
     )
     hotel_rows = frappe.get_all(
         "Travel Hotel Booking",
         filters={"travel_planning": docname},
         fields=["name", "employee", "travel_itinerary_row", "segment_no", "contact_email",
                 "custom_hotel_name", "check_in_date", "check_out_date",
-                "custom_hotel_booking_status", "custom_payment_terms_for_hotel_booking"]
+                "custom_hotel_booking_status", "custom_payment_terms_for_hotel_booking",
+                "custom_booking_confirmation_email_sent"]
                + hotel_attachment_fields
                + ["custom_laundry_facility", "custom_laundry_facility_remarks",
                   "custom_discount_on_meal", "custom_meal_discount_remarks",
@@ -157,14 +158,12 @@ def send_combined_segment_emails(docname):
             hotel = h_segments.get(seg_no)
 
             # Skip if this exact pairing was already emailed
-            # if flight and flight.get("custom_booking_confirmation_email_sent"):
-            #     flight = flight if not flight.get("custom_booking_confirmation_email_sent") else None
-            # already_sent = (
-            #     (not flight or frappe.db.get_value("Travel Flight Details", flight.name, "custom_booking_confirmation_email_sent"))
-            #     and (not hotel or frappe.db.get_value("Travel Hotel Booking", hotel.name, "custom_booking_confirmation_email_sent"))
-            # )
-            # if already_sent:
-            #     continue
+            already_sent = (
+                (not flight or flight.get("custom_booking_confirmation_email_sent"))
+                and (not hotel or hotel.get("custom_booking_confirmation_email_sent"))
+            )
+            if already_sent:
+                continue
 
             contact_email = (flight and flight.contact_email) or (hotel and hotel.contact_email)
             if not contact_email:
@@ -243,10 +242,10 @@ def send_combined_segment_emails(docname):
                 reference_name=doc.name,
             )
 
-            # if flight:
-            #     frappe.db.set_value("Travel Flight Details", flight.name, "custom_booking_confirmation_email_sent", 1)
-            # if hotel:
-            #     frappe.db.set_value("Travel Hotel Booking", hotel.name, "custom_booking_confirmation_email_sent", 1)
+            if flight:
+                frappe.db.set_value("Travel Flight Details", flight.name, "custom_booking_confirmation_email_sent", 1)
+            if hotel:
+                frappe.db.set_value("Travel Hotel Booking", hotel.name, "custom_booking_confirmation_email_sent", 1)
 
 def send_flight_booking_emails(docname):
     doc = frappe.get_doc("Travel Planning", docname)
@@ -261,7 +260,10 @@ def send_flight_booking_emails(docname):
     ]
     for segment in frappe.get_all(
         "Travel Flight Details",
-        filters={"travel_planning": docname},
+        filters={
+                "travel_planning": docname,
+                "custom_booking_confirmation_email_sent": 0
+            },
         fields=["name", "employee", "contact_email"] + segment_attachment_fields,
     ):
         if not segment.contact_email:
@@ -294,6 +296,7 @@ def send_flight_booking_emails(docname):
             reference_doctype=doc.doctype,
             reference_name=doc.name
         )
+        frappe.db.set_value("Travel Flight Details", segment.name, "custom_booking_confirmation_email_sent", 1)
 
 
 def send_hotel_booking_emails(docname):
@@ -363,7 +366,10 @@ def send_hotel_booking_emails(docname):
     ]
     for segment in frappe.get_all(
         "Travel Hotel Booking",
-        filters={"travel_planning": docname},
+        filters={
+                "travel_planning": docname,
+                "custom_booking_confirmation_email_sent": 0
+            },
         fields=["name", "employee", "contact_email", "custom_taxi_bill",
                 "custom_payment_terms_for_hotel_booking"] + segment_preference_fields,
     ):
@@ -398,6 +404,7 @@ def send_hotel_booking_emails(docname):
             reference_doctype=doc.doctype,
             reference_name=doc.name
         )
+        frappe.db.set_value("Travel Hotel Booking", segment.name, "custom_booking_confirmation_email_sent", 1)
 
 
 def _build_payment_terms_html(row):
